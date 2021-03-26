@@ -38,13 +38,15 @@ class Trainer(object):
         info = dict()
         switch_t = -1
 
-        prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
+        nagents = state.size()[1]
+
+        prev_hid = torch.zeros(1, nagents, self.args.hid_size)
 
         for t in range(self.args.max_steps):
             misc = dict()
             # recurrence over time
             if t == 0:
-                prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0])
+                prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0], nagents=nagents)
 
             x = [state, prev_hid]
             action_out, value, prev_hid = self.policy_net(x, info)
@@ -61,7 +63,7 @@ class Trainer(object):
             else:
                 misc['alive_mask'] = np.ones_like(reward)
 
-            stat['reward'] = stat.get('reward', 0) + reward[:self.args.nfriendly]
+            stat['reward'] = stat.get('reward', 0) + reward[:nagents]
             if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
                 stat['enemy_reward'] = stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
 
@@ -91,7 +93,7 @@ class Trainer(object):
             reward = self.env.reward_terminal()
 
             episode[-1] = episode[-1]._replace(reward = episode[-1].reward + reward)
-            stat['reward'] = stat.get('reward', 0) + reward[:self.args.nfriendly]
+            stat['reward'] = stat.get('reward', 0) + reward[:nagents]
             if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
                 stat['enemy_reward'] = stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
 
@@ -108,7 +110,7 @@ class Trainer(object):
         # number of action head
         dim_actions = self.args.dim_actions
 
-        n = self.args.nagents
+        n = self.env.env.nagents
         batch_size = len(batch.state)
 
         # size: batch_size * n
@@ -228,7 +230,7 @@ class Trainer(object):
             if p._grad is not None:
                 p._grad.data /= stat['num_steps']
         self.optimizer.step()
-
+        self.env.change_env()
         return stat
 
     def state_dict(self):

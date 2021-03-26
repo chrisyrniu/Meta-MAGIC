@@ -105,3 +105,6 @@ class GymWrapper(object):
             return self.env.stat
         else:
             return dict()
+
+    def change_env(self):
+        self.env.change_env()

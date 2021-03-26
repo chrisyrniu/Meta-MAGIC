@@ -29,7 +29,7 @@ parser.add_argument('--num_epochs', default=100, type=int,
                     help='number of training epochs')
 parser.add_argument('--epoch_size', type=int, default=10,
                     help='number of update iterations in an epoch')
-parser.add_argument('--batch_size', type=int, default=500,
+parser.add_argument('--batch_size', type=int, default=300,
                     help='number of steps before each update (per thread)')
 parser.add_argument('--nprocesses', type=int, default=16,
                     help='How many processes to run')
@@ -74,8 +74,8 @@ parser.add_argument('--message_encoder', action='store_true', default=False,
                     help='if use message encoder')
 parser.add_argument('--message_decoder', action='store_true', default=False,
                     help='if use message decoder')
-parser.add_argument('--nagents', type=int, default=1,
-                    help="Number of agents (used in multiagent)")
+# parser.add_argument('--nagents', type=int, default=1,
+#                     help="Number of agents (used in multiagent)")
 parser.add_argument('--mean_ratio', default=0, type=float,
                     help='how much coooperative to do? 1.0 means fully cooperative')
 parser.add_argument('--detach_gap', default=10000, type=int,
@@ -132,12 +132,12 @@ parser.add_argument('--random', action='store_true', default=False,
 init_args_for_env(parser)
 args = parser.parse_args()
 
-args.nfriendly = args.nagents
-if hasattr(args, 'enemy_comm') and args.enemy_comm:
-    if hasattr(args, 'nenemies'):
-        args.nagents += args.nenemies
-    else:
-        raise RuntimeError("Env. needs to pass argument 'nenemy'.")
+# args.nfriendly = args.nagents
+# if hasattr(args, 'enemy_comm') and args.enemy_comm:
+#     if hasattr(args, 'nenemies'):
+#         args.nagents += args.nenemies
+#     else:
+#         raise RuntimeError("Env. needs to pass argument 'nenemy'.")
 
 if args.env_name == 'grf':
     render = args.render
@@ -202,7 +202,7 @@ if args.plot:
 
 model_dir = Path('./saved') / args.env_name / args.gnn_type
 if args.env_name == 'grf':
-    model_dir = model_dir / args.scenario
+    model_dir = model_dir 
 if not model_dir.exists():
     curr_run = 'run1'
 else:
@@ -227,7 +227,7 @@ def run(num_epochs):
                 trainer.display = True
             s = trainer.train_batch(ep)
             print('batch: ', n)
-            merge_stat(s, stat)
+            # merge_stat(s, stat)
             trainer.display = False
 
         epoch_time = time.time() - epoch_begin_time

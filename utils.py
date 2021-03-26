@@ -124,7 +124,7 @@ def init_args_for_env(parser):
 
     import gym
     import ic3net_envs
-    import grf_envs
+    import grf_envs_meta
 
     env = gym.make(env_dict[env_name])
     env.init_args(parser)

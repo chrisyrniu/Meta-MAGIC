@@ -10,7 +10,6 @@ class MAGIC(nn.Module):
     def __init__(self, args, num_inputs):
         super(MAGIC, self).__init__()
         self.args = args
-        self.nagents = args.nagents
         self.hid_size = args.hid_size
         self.recurrent = args.recurrent
         
@@ -30,7 +29,7 @@ class MAGIC(nn.Module):
 
         self.encoder = nn.Linear(num_inputs, args.hid_size)
 
-        self.init_hidden(args.batch_size)
+        # self.init_hidden(args.batch_size)
         self.f_module = nn.LSTMCell(args.hid_size, args.hid_size)
 
         if not args.first_graph_complete:
@@ -94,9 +93,9 @@ class MAGIC(nn.Module):
         x, hidden_state, cell_state = self.forward_state_encoder(x)
 
         batch_size = x.size()[0]
-        n = self.nagents
+        n = x.size()[1]
 
-        num_agents_alive, agent_mask = self.get_agent_mask(batch_size, info)
+        num_agents_alive, agent_mask = self.get_agent_mask(batch_size, info, n)
 
         hidden_state, cell_state = self.f_module(x.squeeze(), (hidden_state, cell_state))
 
@@ -110,13 +109,13 @@ class MAGIC(nn.Module):
 
         if not self.args.first_graph_complete:
             if self.args.use_gconv_encoder:
-                adj_complete = self.get_complete_graph(agent_mask)
+                adj_complete = self.get_complete_graph(agent_mask, n)
                 encoded_state1 = self.gconv_encoder(comm, adj_complete)
-                adj1 = self.get_adj_matrix(self.hard_attn1, encoded_state1, agent_mask, self.args.directed)
+                adj1 = self.get_adj_matrix(self.hard_attn1, encoded_state1, agent_mask, n, self.args.directed)
             else:
-                adj1 = self.get_adj_matrix(self.hard_attn1, comm, agent_mask, self.args.directed)
+                adj1 = self.get_adj_matrix(self.hard_attn1, comm, agent_mask, n, self.args.directed)
         else:
-            adj1 = self.get_complete_graph(agent_mask)
+            adj1 = self.get_complete_graph(agent_mask, n)
             
         if self.args.gnn_type == 'gat':
             comm = F.elu(self.gconv1(comm, adj1))
@@ -126,13 +125,13 @@ class MAGIC(nn.Module):
         if self.args.learn_second_graph and not self.args.second_graph_complete:
             if self.args.use_gconv_encoder:
                 encoded_state2 = encoded_state1
-                adj2 = self.get_adj_matrix(self.hard_attn2, encoded_state2, agent_mask, self.args.directed)
+                adj2 = self.get_adj_matrix(self.hard_attn2, encoded_state2, agent_mask, n, self.args.directed)
             else:
-                adj2 = self.get_adj_matrix(self.hard_attn2, comm_ori, agent_mask, self.args.directed)
+                adj2 = self.get_adj_matrix(self.hard_attn2, comm_ori, agent_mask, n, self.args.directed)
         elif not self.args.learn_second_graph and not self.args.second_graph_complete:
             adj2 = adj1
         else:
-            adj2 = self.get_complete_graph(agent_mask)
+            adj2 = self.get_complete_graph(agent_mask, n)
             
         comm = self.gconv2(comm, adj2)
         
@@ -150,8 +149,8 @@ class MAGIC(nn.Module):
 
         return action_out, value_head, (hidden_state.clone(), cell_state.clone())
 
-    def get_agent_mask(self, batch_size, info):
-        n = self.nagents
+    def get_agent_mask(self, batch_size, info, nagents):
+        n = nagents
 
         if 'alive_mask' in info:
             agent_mask = torch.from_numpy(info['alive_mask'])
@@ -181,15 +180,15 @@ class MAGIC(nn.Module):
             m.weight.data.fill_(0.)
             m.bias.data.fill_(0.)
         
-    def init_hidden(self, batch_size):
+    def init_hidden(self, batch_size, nagents):
         # dim 0 = num of layers * num of direction
-        return tuple(( torch.zeros(batch_size * self.nagents, self.hid_size, requires_grad=True),
-                       torch.zeros(batch_size * self.nagents, self.hid_size, requires_grad=True)))
+        return tuple(( torch.zeros(batch_size * nagents, self.hid_size, requires_grad=True),
+                       torch.zeros(batch_size * nagents, self.hid_size, requires_grad=True)))
     
     
-    def get_adj_matrix(self, hard_attn_model, hidden_state, agent_mask, directed=True):
+    def get_adj_matrix(self, hard_attn_model, hidden_state, agent_mask, nagents, directed=True):
         # hidden_state size: n * hid_size
-        n = self.args.nagents
+        n = nagents
         hid_size = hidden_state.size(-1)
         # hard_attn_input size: n * n * (2*hid_size)
         hard_attn_input = torch.cat([hidden_state.repeat(1, n).view(n * n, -1), hidden_state.repeat(n, 1)], dim=1).view(n, -1, 2 * hid_size)
@@ -208,8 +207,8 @@ class MAGIC(nn.Module):
         
         return adj
     
-    def get_complete_graph(self, agent_mask):
-        n = self.args.nagents
+    def get_complete_graph(self, agent_mask, nagents):
+        n = nagents
         adj = torch.ones(n, n)
         agent_mask = agent_mask.expand(n, n)
         agent_mask_transpose = agent_mask.transpose(0, 1)

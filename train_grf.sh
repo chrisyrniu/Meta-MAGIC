@@ -3,9 +3,8 @@ export OMP_NUM_THREADS=1
 
 python -u main.py \
   --env_name grf \
-  --nagents 3 \
-  --nprocesses 16 \
-  --num_epochs 500 \
+  --nprocesses 1 \
+  --num_epochs 200 \
   --epoch_size 10 \
   --hid_size 128 \
   --detach_gap 10 \
@@ -27,10 +26,8 @@ python -u main.py \
   --message_encoder \
   --message_decoder \
   --recurrent \
-  --scenario academy_3_vs_1_with_keeper \
-  --num_controlled_lagents 3 \
-  --num_controlled_ragents 0 \
   --reward_type scoring \
   --save \
   --seed 0 \
+  --render \
   | tee train_grf.log
