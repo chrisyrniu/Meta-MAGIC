@@ -7,7 +7,7 @@ python -u main.py \
   --num_epochs 200 \
   --epoch_size 10 \
   --hid_size 128 \
-  --detach_gap 10 \
+  --detach_gap 100000 \
   --lrate 0.001 \
   --value_coeff 0.01 \
   --max_steps 80 \
@@ -29,5 +29,4 @@ python -u main.py \
   --reward_type scoring \
   --save \
   --seed 0 \
-  --render \
   | tee train_grf.log
