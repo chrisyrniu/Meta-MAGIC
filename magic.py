@@ -7,11 +7,16 @@ from gnn_layers import GraphAttention
 from gnn_layers import GraphConvolution
 
 class MAGIC(nn.Module):
-    def __init__(self, args, num_inputs):
+    def __init__(self, args, obs_dim):
         super(MAGIC, self).__init__()
         self.args = args
         self.hid_size = args.hid_size
         self.recurrent = args.recurrent
+        self.obs_dim = obs_dim
+        self.act_num = self.args.num_actions[0]
+        self.obs_embd_dim = 64
+        self.act_embd_dim = 32
+        self.rwd_embd_dim = 32
         
         if args.gnn_type == 'gat':
             dropout = 0
@@ -27,7 +32,10 @@ class MAGIC(nn.Module):
         
         self.init_std = args.init_std if hasattr(args, 'comm_init_std') else 0.2
 
-        self.encoder = nn.Linear(num_inputs, args.hid_size)
+        self.obs_encoder = nn.Linear(obs_dim, self.obs_embd_dim)
+        self.act_encoder = nn.Linear(self.act_num, self.act_embd_dim)
+        self.rwd_encoder = nn.Linear(1, self.rwd_embd_dim)
+        self.encoder = nn.Linear(self.obs_embd_dim+self.act_embd_dim+self.rwd_embd_dim, self.hid_size)
 
         # self.init_hidden(args.batch_size)
         self.f_module = nn.LSTMCell(args.hid_size, args.hid_size)
@@ -166,12 +174,17 @@ class MAGIC(nn.Module):
     def forward_state_encoder(self, x):
         hidden_state, cell_state = None, None
 
-        x, extras = x
-        x = self.encoder(x)
+        obs, prev_action, prev_reward, extras = x
+        obs = self.obs_encoder(obs)
+        prev_action = F.one_hot(torch.tensor(prev_action).to(torch.int64), num_classes=self.act_num).unsqueeze(0).expand(obs.size()[0], obs.size()[1], -1)
+        prev_action = self.act_encoder(prev_action.to(torch.float64))
+        prev_reward = torch.tensor(prev_reward).view(1, -1, 1).expand(obs.size()[0], obs.size()[1], -1)
+        prev_reward = self.rwd_encoder(prev_reward.to(torch.float64))
+        meta_state = torch.cat((obs, prev_action, prev_reward), dim=-1)
 
         hidden_state, cell_state = extras
 
-        return x, hidden_state, cell_state
+        return meta_state, hidden_state, cell_state
 
 
     def init_linear(self, m):

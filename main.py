@@ -230,42 +230,42 @@ def run(num_epochs):
             # merge_stat(s, stat)
             trainer.display = False
 
-        epoch_time = time.time() - epoch_begin_time
-        epoch = len(log['epoch'].data) + 1
-        num_episodes += stat['num_episodes']
-        for k, v in log.items():
-            if k == 'epoch':
-                v.data.append(epoch)
-            else:
-                if k in stat and v.divide_by is not None and stat[v.divide_by] > 0:
-                    stat[k] = stat[k] / stat[v.divide_by]
-                v.data.append(stat.get(k, 0))
+        # epoch_time = time.time() - epoch_begin_time
+        # epoch = len(log['epoch'].data) + 1
+        # num_episodes += stat['num_episodes']
+        # for k, v in log.items():
+        #     if k == 'epoch':
+        #         v.data.append(epoch)
+        #     else:
+        #         if k in stat and v.divide_by is not None and stat[v.divide_by] > 0:
+        #             stat[k] = stat[k] / stat[v.divide_by]
+        #         v.data.append(stat.get(k, 0))
 
-        np.set_printoptions(precision=2)
+        # np.set_printoptions(precision=2)
         
         print('Epoch {}'.format(epoch))
-        print('Episode: {}'.format(num_episodes))
-        print('Reward: {}'.format(stat['reward']))
-        print('Time: {:.2f}s'.format(epoch_time))
+        # print('Episode: {}'.format(num_episodes))
+        # print('Reward: {}'.format(stat['reward']))
+        # print('Time: {:.2f}s'.format(epoch_time))
         
-        if 'enemy_reward' in stat.keys():
-            print('Enemy-Reward: {}'.format(stat['enemy_reward']))
-        if 'add_rate' in stat.keys():
-            print('Add-Rate: {:.2f}'.format(stat['add_rate']))
-        if 'success' in stat.keys():
-            print('Success: {:.4f}'.format(stat['success']))
-        if 'steps_taken' in stat.keys():
-            print('Steps-Taken: {:.2f}'.format(stat['steps_taken']))
-        if 'comm_action' in stat.keys():
-            print('Comm-Action: {}'.format(stat['comm_action']))
-        if 'enemy_comm' in stat.keys():
-            print('Enemy-Comm: {}'.format(stat['enemy_comm']))
+        # if 'enemy_reward' in stat.keys():
+        #     print('Enemy-Reward: {}'.format(stat['enemy_reward']))
+        # if 'add_rate' in stat.keys():
+        #     print('Add-Rate: {:.2f}'.format(stat['add_rate']))
+        # if 'success' in stat.keys():
+        #     print('Success: {:.4f}'.format(stat['success']))
+        # if 'steps_taken' in stat.keys():
+        #     print('Steps-Taken: {:.2f}'.format(stat['steps_taken']))
+        # if 'comm_action' in stat.keys():
+        #     print('Comm-Action: {}'.format(stat['comm_action']))
+        # if 'enemy_comm' in stat.keys():
+        #     print('Enemy-Comm: {}'.format(stat['enemy_comm']))
 
-        if args.plot:
-            for k, v in log.items():
-                if v.plot and len(v.data) > 0:
-                    vis.line(np.asarray(v.data), np.asarray(log[v.x_axis].data[-len(v.data):]),
-                    win=k, opts=dict(xlabel=v.x_axis, ylabel=k))
+        # if args.plot:
+        #     for k, v in log.items():
+        #         if v.plot and len(v.data) > 0:
+        #             vis.line(np.asarray(v.data), np.asarray(log[v.x_axis].data[-len(v.data):]),
+        #             win=k, opts=dict(xlabel=v.x_axis, ylabel=k))
     
         if args.save_every and ep and args.save and (ep+1) % args.save_every == 0:
             save(final=False, epoch=ep+1)

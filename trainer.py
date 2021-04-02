@@ -23,7 +23,7 @@ class Trainer(object):
         self.params = [p for p in self.policy_net.parameters()]
 
 
-    def get_episode(self, epoch):
+    def get_episode(self, epoch, meta_reset, prev_hid):
         episode = []
         reset_args = getargspec(self.env.reset).args
         if 'epoch' in reset_args:
@@ -40,23 +40,34 @@ class Trainer(object):
 
         nagents = state.size()[1]
 
-        prev_hid = torch.zeros(1, nagents, self.args.hid_size)
+        if meta_reset:
+            prev_hid = torch.zeros(1, nagents, self.args.hid_size)
+
+        prev_action = np.array([0] * nagents)
+        prev_reward = [0] * nagents
 
         for t in range(self.args.max_steps):
             misc = dict()
             # recurrence over time
-            if t == 0:
+            if meta_reset and t == 0:
                 prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0], nagents=nagents)
 
-            x = [state, prev_hid]
+            x = [state, prev_action, prev_reward, prev_hid]
             action_out, value, prev_hid = self.policy_net(x, info)
 
-            if (t + 1) % self.args.detach_gap == 0:
-                prev_hid = (prev_hid[0].detach(), prev_hid[1].detach())
+
+            # print('action_out', action_out)
 
             action = select_action(self.args, action_out)
+            # print('action0', action)
             action, actual = translate_action(self.args, self.env, action)
             next_state, reward, done, info = self.env.step(actual)
+            # print('next_state', next_state)
+            # print('reward', reward)
+            # print('action', action)
+            # print('actual', actual)
+            prev_action = action[0]
+            prev_reward = reward
 
             if 'alive_mask' in info:
                 misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
@@ -100,7 +111,7 @@ class Trainer(object):
 
         if hasattr(self.env, 'get_stat'):
             merge_stat(self.env.get_stat(), stat)
-        return (episode, stat)
+        return (episode, stat, prev_hid)
 
 
     def compute_grad(self, batch):
@@ -204,10 +215,18 @@ class Trainer(object):
         batch = []
         self.stats = dict()
         self.stats['num_episodes'] = 0
+        count = 0
+        meta_reset = False
+        hid_state = None
         while len(batch) < self.args.batch_size:
+            count += 1
+            if count == 1:
+                meta_reset = True
+            else:
+                meta_reset = False
             if self.args.batch_size - len(batch) <= self.args.max_steps:
                 self.last_step = True
-            episode, episode_stat = self.get_episode(epoch)
+            episode, episode_stat, hid_state = self.get_episode(epoch, meta_reset, hid_state)
             merge_stat(episode_stat, self.stats)
             self.stats['num_episodes'] += 1
             batch += episode
