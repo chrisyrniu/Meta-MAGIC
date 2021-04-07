@@ -35,7 +35,12 @@ class MAGIC(nn.Module):
         self.obs_encoder = nn.Linear(obs_dim, self.obs_embd_dim)
         self.act_encoder = nn.Linear(self.act_num, self.act_embd_dim)
         self.rwd_encoder = nn.Linear(1, self.rwd_embd_dim)
-        self.encoder = nn.Linear(self.obs_embd_dim+self.act_embd_dim+self.rwd_embd_dim, self.hid_size)
+        self.encoder = nn.Sequential(
+        	nn.Linear(self.obs_embd_dim+self.act_embd_dim+self.rwd_embd_dim, self.hid_size),
+        	nn.ReLU(),
+        	nn.Linear(self.hid_size, self.hid_size))
+
+        
 
         # self.init_hidden(args.batch_size)
         self.f_module = nn.LSTMCell(args.hid_size, args.hid_size)
