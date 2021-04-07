@@ -6,8 +6,6 @@ class GRFWrapperEnv(gym.Env):
     
     def __init__(self,):
         self.env = None
-        self.num_controlled_lagents = 0
-        self.num_controlled_ragents = 0
         self.num_controlled_agents = 0
         self.num_lagents = 0
         self.num_ragents = 0
@@ -16,97 +14,96 @@ class GRFWrapperEnv(gym.Env):
         
     def init_args(self, parser):
         env = parser.add_argument_group('GRF')
-        # env.add_argument('--scenario', type=str, default='academy_3_vs_1_with_keeper',
-        #                  help="Scenario of the game")        
-        # env.add_argument('--num_controlled_lagents', type=int, default=3,
-        #                  help="Number of controlled agents on the left side")
-        # env.add_argument('--num_controlled_ragents', type=int, default=0,
-        #                  help="Number of controlled agents on the right side")  
+        env.add_argument('--scenarios', nargs='+', required=True,
+                         help="Scenarios (tasks) of the game")      
+        env.add_argument('--num_controlled_agents', nargs='+', type=int, required=True,
+                         help="the number of controlled agents for each task")  
+        env.add_argument('--max_num_lplayers', type=int, default=4,
+                         help="Max number of players on the left side")
+        env.add_argument('--max_num_rplayers', type=int, default=3,
+                         help="Max number of players on the right side")
         env.add_argument('--reward_type', type=str, default='scoring',
                          help="Reward type for training")
         env.add_argument('--render', action="store_true", default=False,
                          help="Render training or testing process")
         
     def multi_agent_init(self, args):
-        env1 = grf_env.create_environment(
-            env_name="3_vs_2_with_keeper",
-            stacked=False,
-            representation='multiagent',
-            rewards=args.reward_type,
-            write_goal_dumps=False,
-            write_full_episode_dumps=False,
-            render=False,
-            dump_frequency=0,
-            logdir='/tmp/test',
-            extra_players=None,
-            number_of_left_players_agent_controls=3,
-            number_of_right_players_agent_controls=0,
-            channel_dimensions=(3, 3))
-        env2 = grf_env.create_environment(
-            env_name="2_vs_1_with_keeper",
-            stacked=False,
-            representation='multiagent',
-            rewards=args.reward_type,
-            write_goal_dumps=False,
-            write_full_episode_dumps=False,
-            render=False,
-            dump_frequency=0,
-            logdir='/tmp/test',
-            extra_players=None,
-            number_of_left_players_agent_controls=2,
-            number_of_right_players_agent_controls=0,
-            channel_dimensions=(3, 3))
-        self.envs = [env1, env2]
-        self.env = env1
-        self.nagents = 3
+        self.envs = []
+        for i in range(len(args.scenarios)):
+            env = grf_env.create_environment(
+                env_name=args.scenarios[i],
+                stacked=False,
+                representation='multiagent',
+                rewards=args.reward_type,
+                write_goal_dumps=False,
+                write_full_episode_dumps=False,
+                render=False,
+                dump_frequency=0,
+                logdir='/tmp/test',
+                extra_players=None,
+                number_of_left_players_agent_controls=args.num_controlled_agents[i],
+                number_of_right_players_agent_controls=0,
+                channel_dimensions=(3, 3))
+
+            self.envs.append(env)
+
+        self.cur_env = self.envs[0]
+        self.nagents_list = args.num_controlled_agents
+        self.cur_nagents = self.nagents_list[0]
+        self.cur_idx = 0
+
         self.render = args.render
 
-        self.num_controlled_lagents = max([3, 2])
-        self.num_controlled_ragents = max([0, 0])
-        self.num_controlled_agents = max([3, 2]) + max([0, 0])
-        self.num_lagents = max(env1.num_lteam_players, env2.num_lteam_players)
-        self.num_ragents = max(env1.num_rteam_players, env2.num_rteam_players)
-        if self.num_controlled_agents > 1:
-            action_space = gym.spaces.Discrete(self.env.action_space.nvec[1])
+        self.max_num_lplayers = args.max_num_lplayers # max number of players on the left team
+        self.max_num_rplayers = args.max_num_rplayers # max number of players on the left team
+
+        # the original action spaces for different tasks should be the same 
+        if self.cur_nagents > 1:
+            self.action_space = gym.spaces.Discrete(self.cur_env.action_space.nvec[1])
         else:
-            action_space = self.env.action_space
-        if self.num_controlled_agents > 1:
-            observation_space = gym.spaces.Box(
-                low=self.env.observation_space.low[0],
-                high=self.env.observation_space.high[0],
-                dtype=self.env.observation_space.dtype)
-        else:
-            observation_space = gym.spaces.Box(
-                low=self.env.observation_space.low,
-                high=self.env.observation_space.high,
-                dtype=self.env.observation_space.dtype)
+            self.action_space = self.cur_env.action_space
+
+        self.max_num_players = self.max_num_lplayers + self.max_num_rplayers
+        shape = 2 * self.max_num_players + 3
+        self.observation_space = gym.spaces.Box(
+                low=np.array([-1]*shape), 
+                high=np.array([1]*shape), 
+                shape=(shape, ), 
+                dtype=self.cur_env.observation_space.dtype)
             
-        # check spaces
-        self.action_space = action_space
-        self.observation_space = observation_space 
         return
    
     # check epoch arg
     def reset(self):
         if self.render:
-            self.env.render()
+            self.cur_env.render()
         self.stat = dict()
-        obs = self.env.reset()
-        if self.num_controlled_agents == 1:
+        obs = self.cur_env.reset()
+        if self.cur_nagents == 1:
             obs = obs.reshape(1, -1)
-        if self.env.num_lteam_players < self.num_lagents:
-            obs = np.insert(obs, [6,10], 0, 1)
-            obs = np.insert(obs, [7,12], 0, 1)
+
+        left_sup = np.zeros((obs.shape[0], 2*(self.max_num_lplayers-self.cur_env.num_lteam_players)))
+        right_sup = np.zeros((obs.shape[0], 2*(self.max_num_rplayers-self.cur_env.num_rteam_players)))
+
+        obs = np.concatenate((obs[:,0:2*self.cur_env.num_lteam_players], left_sup,
+         obs[:,2*self.cur_env.num_lteam_players:2*(self.cur_env.num_lteam_players+self.cur_env.num_rteam_players)],
+         right_sup, obs[:,-13:-10]), axis=1)
+
         return obs
     
     def step(self, actions):
-        o, r, d, i = self.env.step(actions)
-        if self.num_controlled_agents == 1:
+        o, r, d, i = self.cur_env.step(actions)
+        if self.cur_nagents == 1:
             o = o.reshape(1, -1)
             r = r.reshape(1, -1)
-        if self.env.num_lteam_players < self.num_lagents:
-            o = np.insert(o, [6,10], 0, 1)
-            o = np.insert(o, [7,12], 0, 1)
+
+        left_sup = np.zeros((o.shape[0], 2*(self.max_num_lplayers-self.cur_env.num_lteam_players)))
+        right_sup = np.zeros((o.shape[0], 2*(self.max_num_rplayers-self.cur_env.num_rteam_players)))
+
+        o = np.concatenate((o[:,0:2*self.cur_env.num_lteam_players], left_sup,
+         o[:,2*self.cur_env.num_lteam_players:2*(self.cur_env.num_lteam_players+self.cur_env.num_rteam_players)],
+         right_sup, o[:,-13:-10]), axis=1)
+
         next_obs = o
         rewards = r
         dones = d
@@ -126,11 +123,13 @@ class GRFWrapperEnv(gym.Env):
 
     def change_env(self):
         if self.render:
-            self.env.disable_render()
-        if self.nagents == 3:
-            self.env = self.envs[1]
-            self.nagents = 2
+            self.cur_env.disable_render()
+
+        if self.cur_idx == len(self.envs)-1:
+            self.cur_idx = 0
         else:
-            self.env = self.envs[0]
-            self.nagents = 3
+            self.cur_idx += 1
+
+        self.cur_env = self.envs[self.cur_idx]
+        self.cur_nagents = self.nagents_list[self.cur_idx]
         

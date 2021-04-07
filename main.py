@@ -243,7 +243,7 @@ def run(num_epochs):
 
         # np.set_printoptions(precision=2)
         
-        print('Epoch {}'.format(epoch))
+        print('Epoch {}'.format(ep))
         # print('Episode: {}'.format(num_episodes))
         # print('Reward: {}'.format(stat['reward']))
         # print('Time: {:.2f}s'.format(epoch_time))

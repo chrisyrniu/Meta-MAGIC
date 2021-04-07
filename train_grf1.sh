@@ -3,8 +3,8 @@ export OMP_NUM_THREADS=1
 
 python -u main.py \
   --env_name grf \
-  --scenarios 3_vs_2_with_keeper 2_vs_1_with_keeper \
-  --num_controlled_agents 3 2 \
+  --scenarios academy_3_vs_1_with_keeper \
+  --num_controlled_agents 3 \
   --max_num_lplayers 4 \
   --max_num_rplayers 3 \
   --reward_type scoring \
@@ -32,5 +32,6 @@ python -u main.py \
   --message_decoder \
   --recurrent \
   --save \
+  --load model.pt \
   --seed 0 \
   | tee train_grf.log

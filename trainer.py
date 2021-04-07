@@ -121,7 +121,7 @@ class Trainer(object):
         # number of action head
         dim_actions = self.args.dim_actions
 
-        n = self.env.env.nagents
+        n = self.env.env.cur_nagents
         batch_size = len(batch.state)
 
         # size: batch_size * n
