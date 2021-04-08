@@ -9,9 +9,10 @@ python -u main.py \
   --max_num_lplayers 4 \
   --max_num_rplayers 3 \
   --reward_type scoring \
-  --nprocesses 1 \
-  --num_epochs 200 \
+  --nprocesses 16 \
+  --num_epochs 500 \
   --epoch_size 10 \
+  --batch_size 1000 \
   --hid_size 128 \
   --detach_gap 100000 \
   --lrate 0.001 \
@@ -33,7 +34,7 @@ python -u main.py \
   --message_decoder \
   --recurrent \
   --save \
-  --seed 0 \
+  --seed 700 \
   --plot \
   --plot_env meta_magic \
   --plot_port 8097 \

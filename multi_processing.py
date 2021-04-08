@@ -34,7 +34,7 @@ class MultiProcessWorker(mp.Process):
                 for p in self.trainer.params:
                     if p._grad is not None:
                         grads.append(p._grad.data)
-
+                self.trainer.env.change_env()
                 self.comm.send(grads)
 
 
@@ -92,9 +92,10 @@ class MultiProcessTrainer(object):
         for i in range(len(self.grads)):
             for g in self.worker_grads:
                 self.grads[i] += g[i]
-            self.grads[i] /= stat['num_steps']
+            self.grads[i] /= stat['task%i_num_steps' % (self.trainer.env.env.cur_idx)]
 
         self.trainer.optimizer.step()
+        self.trainer.env.change_env()
         return stat
 
     def state_dict(self):

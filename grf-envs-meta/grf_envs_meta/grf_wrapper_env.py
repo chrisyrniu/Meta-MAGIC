@@ -66,8 +66,8 @@ class GRFWrapperEnv(gym.Env):
         self.max_num_players = self.max_num_lplayers + self.max_num_rplayers
         shape = 2 * self.max_num_players + 3
         self.observation_space = gym.spaces.Box(
-                low=np.array([-1]*shape), 
-                high=np.array([1]*shape), 
+                low=-2, 
+                high=2, 
                 shape=(shape, ), 
                 dtype=self.cur_env.observation_space.dtype)
             
