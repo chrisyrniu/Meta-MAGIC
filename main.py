@@ -25,11 +25,14 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 
 parser = argparse.ArgumentParser(description='Multi-Agent Graph Attention Communication')
 
+parser.add_argument('--mode', default='meta-train', type=str,
+                    help='mode of meta-learning (meta-train|meta-test)')
+
 parser.add_argument('--num_epochs', default=100, type=int,
                     help='number of training epochs')
 parser.add_argument('--epoch_size', type=int, default=10,
                     help='number of update iterations in an epoch')
-parser.add_argument('--batch_size', type=int, default=300,
+parser.add_argument('--batch_size', type=int, default=500,
                     help='number of steps before each update (per thread)')
 parser.add_argument('--nprocesses', type=int, default=16,
                     help='How many processes to run')
@@ -184,18 +187,25 @@ else:
     trainer = Trainer(args, policy_net, data.init(args.env_name, args))
 
 log = dict()
-log['epoch'] = LogField(list(), False, None, None)
-log['reward'] = LogField(list(), True, 'epoch', 'num_episodes')
-log['enemy_reward'] = LogField(list(), True, 'epoch', 'num_episodes')
-log['success'] = LogField(list(), True, 'epoch', 'num_episodes')
-log['steps_taken'] = LogField(list(), True, 'epoch', 'num_episodes')
-log['add_rate'] = LogField(list(), True, 'epoch', 'num_episodes')
-log['comm_action'] = LogField(list(), True, 'epoch', 'num_steps')
-log['enemy_comm'] = LogField(list(), True, 'epoch', 'num_steps')
-log['value_loss'] = LogField(list(), True, 'epoch', 'num_steps')
-log['action_loss'] = LogField(list(), True, 'epoch', 'num_steps')
-log['entropy'] = LogField(list(), True, 'epoch', 'num_steps')
 
+# log['epoch'] = LogField(list(), False, None, None)
+# log['reward'] = LogField(list(), True, 'epoch', 'num_episodes')
+# log['enemy_reward'] = LogField(list(), True, 'epoch', 'num_episodes')
+# log['success'] = LogField(list(), True, 'epoch', 'num_episodes')
+# log['steps_taken'] = LogField(list(), True, 'epoch', 'num_episodes')
+# log['add_rate'] = LogField(list(), True, 'epoch', 'num_episodes')
+# log['comm_action'] = LogField(list(), True, 'epoch', 'num_steps')
+# log['enemy_comm'] = LogField(list(), True, 'epoch', 'num_steps')
+# log['value_loss'] = LogField(list(), True, 'epoch', 'num_steps')
+# log['action_loss'] = LogField(list(), True, 'epoch', 'num_steps')
+# log['entropy'] = LogField(list(), True, 'epoch', 'num_steps')
+
+log['epoch'] = LogField(list(), False, None, None)
+for i in range(len(args.scenarios)):
+    # log['task%i_epoch' % i] = LogField(list(), False, None, None)
+    log['task%i_reward' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
+    log['task%i_success' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
+    log['task%i_steps_taken' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
 
 if args.plot:
     vis = visdom.Visdom(env=args.plot_env, port=args.plot_port)
@@ -227,26 +237,31 @@ def run(num_epochs):
                 trainer.display = True
             s = trainer.train_batch(ep)
             print('batch: ', n)
-            # merge_stat(s, stat)
+            merge_stat(s, stat)
             trainer.display = False
 
-        # epoch_time = time.time() - epoch_begin_time
-        # epoch = len(log['epoch'].data) + 1
+        epoch_time = time.time() - epoch_begin_time
+        epoch = len(log['epoch'].data) + 1
         # num_episodes += stat['num_episodes']
-        # for k, v in log.items():
-        #     if k == 'epoch':
-        #         v.data.append(epoch)
-        #     else:
-        #         if k in stat and v.divide_by is not None and stat[v.divide_by] > 0:
-        #             stat[k] = stat[k] / stat[v.divide_by]
-        #         v.data.append(stat.get(k, 0))
+        for k, v in log.items():
+            if k == 'epoch':
+                v.data.append(epoch)
+            else:
+                if k in stat and v.divide_by is not None and stat[v.divide_by] > 0:
+                    stat[k] = stat[k] / stat[v.divide_by]
+                v.data.append(stat.get(k, 0))
 
         # np.set_printoptions(precision=2)
         
         print('Epoch {}'.format(ep))
         # print('Episode: {}'.format(num_episodes))
         # print('Reward: {}'.format(stat['reward']))
-        # print('Time: {:.2f}s'.format(epoch_time))
+        print('Time: {:.2f}s'.format(epoch_time))
+
+        for i in range(len(args.scenarios)):
+            print('Task {} Reward: {}'.format(i, stat['task%i_reward' % i]))
+            print('Task {} Success: {}'.format(i, stat['task%i_success' % i]))
+            print('Task {} Steps-Taken: {}'.format(i, stat['task%i_steps_taken' % i]))
         
         # if 'enemy_reward' in stat.keys():
         #     print('Enemy-Reward: {}'.format(stat['enemy_reward']))
@@ -261,11 +276,11 @@ def run(num_epochs):
         # if 'enemy_comm' in stat.keys():
         #     print('Enemy-Comm: {}'.format(stat['enemy_comm']))
 
-        # if args.plot:
-        #     for k, v in log.items():
-        #         if v.plot and len(v.data) > 0:
-        #             vis.line(np.asarray(v.data), np.asarray(log[v.x_axis].data[-len(v.data):]),
-        #             win=k, opts=dict(xlabel=v.x_axis, ylabel=k))
+        if args.plot:
+            for k, v in log.items():
+                if v.plot and len(v.data) > 0:
+                    vis.line(np.asarray(v.data), np.asarray(log[v.x_axis].data[-len(v.data):]),
+                    win=k, opts=dict(xlabel=v.x_axis, ylabel=k))
     
         if args.save_every and ep and args.save and (ep+1) % args.save_every == 0:
             save(final=False, epoch=ep+1)
@@ -283,11 +298,12 @@ def save(final, epoch=0):
     else:
         torch.save(d, run_dir / ('model_ep%i.pt' %(epoch)))
 
-def load(path):
+def load(path, mode):
     d = torch.load(path)
     # log.clear()
     policy_net.load_state_dict(d['policy_net'])
-    log.update(d['log'])
+    if mode == 'meta-train':
+        log.update(d['log'])
     trainer.load_state_dict(d['trainer'])
 
 def signal_handler(signal, frame):
@@ -299,7 +315,7 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 if args.load != '':
-    load(args.load)
+    load(args.load, args.mode)
 
 run(args.num_epochs)
 if args.display:

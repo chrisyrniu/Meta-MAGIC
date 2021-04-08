@@ -2,6 +2,7 @@
 export OMP_NUM_THREADS=1
 
 python -u main.py \
+  --mode meta-test \
   --env_name grf \
   --scenarios academy_3_vs_1_with_keeper \
   --num_controlled_agents 3 \
@@ -34,4 +35,7 @@ python -u main.py \
   --save \
   --load model.pt \
   --seed 0 \
-  | tee train_grf.log
+  --plot \
+  --plot_env meta_magic_test \
+  --plot_port 8097 \
+  | tee train_grf1.log

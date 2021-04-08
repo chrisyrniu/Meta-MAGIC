@@ -74,9 +74,9 @@ class Trainer(object):
             else:
                 misc['alive_mask'] = np.ones_like(reward)
 
-            stat['reward'] = stat.get('reward', 0) + reward[:nagents]
-            if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                stat['enemy_reward'] = stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
+            stat['task%i_reward' % (self.env.env.cur_idx)] = stat.get('task%i_reward' % (self.env.env.cur_idx), 0) + reward[:nagents]
+            # if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
+            #     stat['enemy_reward'] = stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
 
             done = done or t == self.args.max_steps - 1
 
@@ -97,16 +97,17 @@ class Trainer(object):
             state = next_state
             if done:
                 break
-        stat['num_steps'] = t + 1
-        stat['steps_taken'] = stat['num_steps']
 
-        if hasattr(self.env, 'reward_terminal'):
-            reward = self.env.reward_terminal()
+        stat['task%i_num_steps' % (self.env.env.cur_idx)] = t + 1
+        stat['task%i_steps_taken' % (self.env.env.cur_idx)] = stat['task%i_num_steps' % (self.env.env.cur_idx)]
 
-            episode[-1] = episode[-1]._replace(reward = episode[-1].reward + reward)
-            stat['reward'] = stat.get('reward', 0) + reward[:nagents]
-            if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                stat['enemy_reward'] = stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
+        # if hasattr(self.env, 'reward_terminal'):
+        #     reward = self.env.reward_terminal()
+
+        #     episode[-1] = episode[-1]._replace(reward = episode[-1].reward + reward)
+        #     stat['reward'] = stat.get('reward', 0) + reward[:nagents]
+        #     if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
+        #         stat['enemy_reward'] = stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
 
 
         if hasattr(self.env, 'get_stat'):
@@ -188,7 +189,7 @@ class Trainer(object):
             action_loss *= alive_masks
 
         action_loss = action_loss.sum()
-        stat['action_loss'] = action_loss.item()
+        # stat['action_loss'] = action_loss.item()
 
         # value loss term
         targets = returns
@@ -196,14 +197,14 @@ class Trainer(object):
         value_loss *= alive_masks
         value_loss = value_loss.sum()
 
-        stat['value_loss'] = value_loss.item()
+        # stat['value_loss'] = value_loss.item()
         loss = action_loss + self.args.value_coeff * value_loss
 
         # entropy regularization term
         entropy = 0
         for i in range(len(log_p_a)):
             entropy -= (log_p_a[i] * log_p_a[i].exp()).sum()
-        stat['entropy'] = entropy.item()
+        # stat['entropy'] = entropy.item()
         if self.args.entr > 0:
             loss -= self.args.entr * entropy
 
@@ -214,7 +215,7 @@ class Trainer(object):
     def run_batch(self, epoch):
         batch = []
         self.stats = dict()
-        self.stats['num_episodes'] = 0
+        self.stats['task%i_num_episodes' % (self.env.env.cur_idx)] = 0
         count = 0
         meta_reset = False
         hid_state = None
@@ -228,11 +229,12 @@ class Trainer(object):
                 self.last_step = True
             episode, episode_stat, hid_state = self.get_episode(epoch, meta_reset, hid_state)
             merge_stat(episode_stat, self.stats)
-            self.stats['num_episodes'] += 1
+            self.stats['task%i_num_episodes' % (self.env.env.cur_idx)] += 1
             batch += episode
 
         self.last_step = False
-        self.stats['num_steps'] = len(batch)
+        self.stats['task%i_num_steps' % (self.env.env.cur_idx)] = len(batch)
+        # print(self.stats['task%i_num_steps' % (self.env.env.cur_idx)])
         batch = Transition(*zip(*batch))
         return batch, self.stats
 
@@ -247,7 +249,7 @@ class Trainer(object):
 #             print(param.grad)
         for p in self.params:
             if p._grad is not None:
-                p._grad.data /= stat['num_steps']
+                p._grad.data /= stat['task%i_num_steps' % (self.env.env.cur_idx)]
         self.optimizer.step()
         self.env.change_env()
         return stat

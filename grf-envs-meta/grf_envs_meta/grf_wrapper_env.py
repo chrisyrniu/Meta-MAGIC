@@ -108,7 +108,9 @@ class GRFWrapperEnv(gym.Env):
         rewards = r
         dones = d
         infos = i
-        self.stat['success'] = infos['score_reward']
+
+        stat_name = 'task%i_success' % (self.cur_idx)
+        self.stat[stat_name] = infos['score_reward']
         
         return next_obs, rewards, dones, infos
         
