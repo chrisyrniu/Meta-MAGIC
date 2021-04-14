@@ -2,17 +2,17 @@
 export OMP_NUM_THREADS=1
 
 python -u main.py \
-  --mode meta-test \
+  --mode meta-train \
   --env_name grf \
-  --scenarios academy_3_vs_1_with_keeper \
-  --num_controlled_agents 3 \
-  --max_num_lplayers 4 \
-  --max_num_rplayers 3 \
+  --scenarios academy_3_vs_1_with_keeper 3_vs_2_with_keeper 2_vs_1_with_keeper \
+  --num_controlled_agents 3 3 2 \
+  --max_num_lplayers 5 \
+  --max_num_rplayers 4 \
   --reward_type scoring \
   --nprocesses 16 \
-  --num_epochs 100 \
-  --epoch_size 10 \
-  --batch_size 500 \
+  --num_epochs 500 \
+  --epoch_size 15 \
+  --batch_size 1000 \
   --hid_size 128 \
   --detach_gap 100000 \
   --lrate 0.001 \
@@ -34,9 +34,9 @@ python -u main.py \
   --message_decoder \
   --recurrent \
   --save \
-  --load model.pt \
+  --save_every 50 \
   --seed 700 \
   --plot \
-  --plot_env meta_magic_test \
+  --plot_env meta_magic_3v2_3v3_2v2 \
   --plot_port 8097 \
   | tee train_grf1.log

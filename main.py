@@ -200,12 +200,14 @@ log = dict()
 # log['action_loss'] = LogField(list(), True, 'epoch', 'num_steps')
 # log['entropy'] = LogField(list(), True, 'epoch', 'num_steps')
 
+highest_rewards = []
 log['epoch'] = LogField(list(), False, None, None)
 for i in range(len(args.scenarios)):
     # log['task%i_epoch' % i] = LogField(list(), False, None, None)
     log['task%i_reward' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
     log['task%i_success' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
     log['task%i_steps_taken' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
+    highest_rewards.append(-1000000)
 
 if args.plot:
     vis = visdom.Visdom(env=args.plot_env, port=args.plot_port)
@@ -226,6 +228,7 @@ else:
 run_dir = model_dir / curr_run 
 
 def run(num_epochs): 
+    highest_total_reward = -1000000
     num_episodes = 0
     if args.save:
         os.makedirs(run_dir)
@@ -253,7 +256,7 @@ def run(num_epochs):
 
         # np.set_printoptions(precision=2)
         
-        print('Epoch {}'.format(ep))
+        print('Epoch {}'.format(epoch))
         # print('Episode: {}'.format(num_episodes))
         # print('Reward: {}'.format(stat['reward']))
         print('Time: {:.2f}s'.format(epoch_time))
@@ -287,6 +290,25 @@ def run(num_epochs):
 
         if args.save:
             save(final=True)
+            
+        if args.mode == "meta-train":
+            if ep > 200:
+                total_reward = 0
+                save_flag = False
+                for i in range(len(args.scenarios)):
+                    mean_reward = np.mean(stat['task%i_reward' % i])
+                    if highest_rewards[i] < mean_reward:
+                        highest_rewards[i] = mean_reward
+                        save_flag = True
+#                         print('saved on %i!' % i)
+                    total_reward += mean_reward
+                if highest_total_reward < total_reward:
+                    highest_total_reward = total_reward
+                    save_flag = True
+#                     print('saved!')
+                if save_flag:
+                    save(final=False, epoch=ep+1)
+            
 
 def save(final, epoch=0): 
     d = dict()

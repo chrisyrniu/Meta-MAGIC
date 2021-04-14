@@ -4,7 +4,7 @@ export OMP_NUM_THREADS=1
 python -u main.py \
   --mode meta-train \
   --env_name grf \
-  --scenarios 3_vs_2_with_keeper 2_vs_1_with_keeper \
+  --scenarios academy_3_vs_1_with_keeper 2_vs_1_with_keeper \
   --num_controlled_agents 3 2 \
   --max_num_lplayers 4 \
   --max_num_rplayers 3 \
@@ -34,8 +34,9 @@ python -u main.py \
   --message_decoder \
   --recurrent \
   --save \
+  --save_every 50 \
   --seed 700 \
   --plot \
-  --plot_env meta_magic \
+  --plot_env meta_magic_3v2_2v2_try \
   --plot_port 8097 \
   | tee train_grf.log
