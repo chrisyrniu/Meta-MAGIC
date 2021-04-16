@@ -52,6 +52,8 @@ parser.add_argument('--gat_num_heads_out', default=1, type=int,
                     help='number of heads in output gat layer')
 parser.add_argument('--gat_hid_size', default=64, type=int,
                     help='hidden size of one head in gat')
+parser.add_argument('--ge_num_heads', default=4, type=int,
+                    help='number of heads in the gat encoder')
 parser.add_argument('--first_gat_normalize', action='store_true', default=False,
                     help='if normalize first gat layer')
 parser.add_argument('--second_gat_normalize', action='store_true', default=False,
@@ -174,10 +176,18 @@ if args.nprocesses > 1:
 else:
     trainer = Trainer(args, policy_net, data.init(args.env_name, args))
 
+log = dict()
+log['epoch'] = LogField(list(), False, None, None)
+for i in range(len(args.scenarios)):
+    # log['task%i_epoch' % i] = LogField(list(), False, None, None)
+    log['task%i_reward' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
+    log['task%i_success' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
+    log['task%i_steps_taken' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
 
+    
 model_dir = Path('./saved') / args.env_name / args.gnn_type
 if args.env_name == 'grf':
-    model_dir = model_dir / args.scenario
+    model_dir = model_dir
 curr_run = 'run' + str(args.run_num)
 run_dir = model_dir / curr_run 
 
@@ -189,18 +199,28 @@ def run(num_epochs):
             if n == args.epoch_size - 1 and args.display:
                 trainer.display = True
             batch, s = trainer.run_batch(ep)
-            print('batch: ', n)
             merge_stat(s, stat)
             trainer.display = False
+            print('batch: ', n)
 
         epoch_time = time.time() - epoch_begin_time
         epoch = ep + 1
 
+        for k, v in log.items():
+            if k == 'epoch':
+                v.data.append(epoch)
+            else:
+                if k in stat and v.divide_by is not None and stat[v.divide_by] > 0:
+                    stat[k] = stat[k] / stat[v.divide_by]
+                v.data.append(stat.get(k, 0))
+        
         np.set_printoptions(precision=2)
-
-        print('Epoch {}\tReward {}\tTime {:.2f}s'.format(
-                epoch, stat['reward']/stat['num_episodes'], epoch_time
-        ))
+        
+        print('Epoch {}'.format(epoch))        
+        for i in range(len(args.scenarios)):
+            print('Task {} Reward: {}'.format(i, stat['task%i_reward' % i]))
+            print('Task {} Success: {}'.format(i, stat['task%i_success' % i]))
+            print('Task {} Steps-Taken: {}'.format(i, stat['task%i_steps_taken' % i]))
 
 def load(path):
     d = torch.load(path)

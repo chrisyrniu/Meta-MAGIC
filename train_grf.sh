@@ -34,9 +34,9 @@ python -u main.py \
   --message_decoder \
   --recurrent \
   --save \
-  --save_every 50 \
+  --load model.pt \
   --seed 700 \
   --plot \
-  --plot_env meta_magic_3v2_2v2_try \
+  --plot_env meta_magic_3v2_2v2 \
   --plot_port 8097 \
   | tee train_grf.log

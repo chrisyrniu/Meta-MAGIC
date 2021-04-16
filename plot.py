@@ -8,12 +8,8 @@ import glob
 plt.rcParams.update({'font.size': 20})
 
 colors_map = {
-    'IC3Net': '#fca503',
-    'CommNet': '#b0b0b0',
-    'TarMAC-IC3Net': '#b700ff',
-    'GA-Comm': '#77ab3f',
-    'MAGIC (Our Approach)': '#0040ff',
-    'MAGIC w/o the Scheduler': '#ff6373'
+    'Meta-Train from Scratch': '#fca503',
+    'Test': '#0040ff'
 }
 
 def read_file(vec, file_name, term):
@@ -34,8 +30,6 @@ def read_file(vec, file_name, term):
                 epoch_line = lines[epoch_idx]
 
             epoch = int(epoch_line.split(' ')[1].split('\t')[0])
-            if file_name == 'log_files/tj_medium/commnet_tj_medium_no_cur_run1.log':
-                epoch -= 4000
 
             floats = line.split('\t')[0]
             left_bracket = floats.find('[')
@@ -64,31 +58,14 @@ def parse_plot(files, term='Reward'):
     episode_coll = dict()
     for fname in files:
         f = fname.split('.')
-        if 'ic3net' in fname and not 'tar' in fname:
-            label = 'IC3Net'
-        elif 'commnet' in fname:
-            label = 'CommNet'
-        elif 'tar_ic3net' in fname:
-            label = 'TarMAC-IC3Net'
-        elif 'gacomm' in fname:
-            label = 'GA-Comm'
-        elif 'gcomm' in fname and not 'complete' in fname:
-            label = 'MAGIC (Our Approach)'
-        elif 'gcomm' in fname and 'complete' in fname:
-            label = 'MAGIC w/o the Scheduler'
+        if 'train' in fname:
+            label = 'Meta-Train from Scratch'
+        elif 'test' in fname:
+            label = 'Test'
 
         if label not in coll:
             coll[label] = []
             episode_coll[label] = []
-
-        if 'ic3net_pp_hard' in fname and not 'tar' in fname and term == 'Steps-Taken':
-        	term = 'Steps-taken'
-
-        coll[label] = read_file(coll[label], fname, term)
-        episode_coll[label] = read_file(episode_coll[label], fname, 'Episode')
-
-        if 'ic3net_pp_hard' in fname and not 'tar' in fname and term == 'Steps-taken':
-        	term = 'Steps-Taken'
 
     for label in coll.keys():
         coll[label] = coll[label][:1000]
