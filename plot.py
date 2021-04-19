@@ -67,9 +67,12 @@ def parse_plot(files, term='Reward'):
             coll[label] = []
             episode_coll[label] = []
 
+        coll[label] = read_file(coll[label], fname, term)
+        episode_coll[label] = read_file(episode_coll[label], fname, 'Episode')
+
     for label in coll.keys():
-        coll[label] = coll[label][:1000]
-        episode_coll[label] = episode_coll[label][:1000]
+        coll[label] = coll[label][:250]
+        episode_coll[label] = episode_coll[label][:250]
 
         mean_values = []
         max_values = []
@@ -111,8 +114,8 @@ def parse_plot(files, term='Reward'):
     if term == 'Success':
         term = 'Success Rate (%)'
     plt.ylabel(term)
-    # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0.)
-    # plt.legend(framealpha=1)
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0.)
+    plt.legend(framealpha=1)
     plt.grid()
 #     plt.title('GFootball {} {}'.format(sys.argv[2], term))
 
