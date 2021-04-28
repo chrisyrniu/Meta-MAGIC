@@ -32,16 +32,17 @@ class MAGIC(nn.Module):
         
         self.init_std = args.init_std if hasattr(args, 'comm_init_std') else 0.2
 
-        self.obs_encoder = nn.Linear(obs_dim, self.obs_embd_dim)
-        self.act_encoder = nn.Linear(self.act_num, self.act_embd_dim)
-        self.rwd_encoder = nn.Linear(1, self.rwd_embd_dim)
-        self.encoder = nn.Sequential(
-        	nn.Linear(self.obs_embd_dim+self.act_embd_dim+self.rwd_embd_dim, self.hid_size),
-        	nn.ReLU(),
-        	nn.Linear(self.hid_size, self.hid_size))
-
+        self.encoder = nn.Linear(obs_dim, args.hid_size)
         
+#         self.obs_encoder = nn.Linear(obs_dim, self.obs_embd_dim)
+#         self.act_encoder = nn.Linear(self.act_num, self.act_embd_dim)
+#         self.rwd_encoder = nn.Linear(1, self.rwd_embd_dim)
+#         self.encoder = nn.Sequential(
+#         	nn.Linear(self.obs_embd_dim+self.act_embd_dim+self.rwd_embd_dim, self.hid_size),
+#         	nn.ReLU(),
+#         	nn.Linear(self.hid_size, self.hid_size))
 
+    
         # self.init_hidden(args.batch_size)
         self.f_module = nn.LSTMCell(args.hid_size, args.hid_size)
 
@@ -179,17 +180,12 @@ class MAGIC(nn.Module):
     def forward_state_encoder(self, x):
         hidden_state, cell_state = None, None
 
-        obs, prev_action, prev_reward, extras = x
-        obs = self.obs_encoder(obs)
-        prev_action = F.one_hot(torch.tensor(prev_action).to(torch.int64), num_classes=self.act_num).unsqueeze(0).expand(obs.size()[0], obs.size()[1], -1)
-        prev_action = self.act_encoder(prev_action.to(torch.float64))
-        prev_reward = torch.tensor(prev_reward).view(1, -1, 1).expand(obs.size()[0], obs.size()[1], -1)
-        prev_reward = self.rwd_encoder(prev_reward.to(torch.float64))
-        meta_state = torch.cat((obs, prev_action, prev_reward), dim=-1)
+        x, extras = x
+        x = self.encoder(x)
 
         hidden_state, cell_state = extras
 
-        return meta_state, hidden_state, cell_state
+        return x, hidden_state, cell_state
 
 
     def init_linear(self, m):

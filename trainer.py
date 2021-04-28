@@ -49,12 +49,14 @@ class Trainer(object):
         for t in range(self.args.max_steps):
             misc = dict()
             # recurrence over time
-            if meta_reset and t == 0:
+            if  t == 0:
                 prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0], nagents=nagents)
 
-            x = [state, prev_action, prev_reward, prev_hid]
+            x = [state, prev_hid]
             action_out, value, prev_hid = self.policy_net(x, info)
 
+            if (t + 1) % self.args.detach_gap == 0:
+                prev_hid = (prev_hid[0].detach(), prev_hid[1].detach())
 
             # print('action_out', action_out)
 
