@@ -219,7 +219,8 @@ class Trainer(object):
         count = 0
         meta_reset = False
         hid_state = None
-        while len(batch) < self.args.batch_size:
+        meta_reward = []
+        while count < self.args.batch_size:
             count += 1
             if count == 1:
                 meta_reset = True
@@ -228,6 +229,7 @@ class Trainer(object):
             if self.args.batch_size - len(batch) <= self.args.max_steps:
                 self.last_step = True
             episode, episode_stat, hid_state = self.get_episode(epoch, meta_reset, hid_state)
+            meta_reward.append(np.mean(episode_stat['task%i_reward' % (self.env.env.cur_idx)]))
             merge_stat(episode_stat, self.stats)
             self.stats['task%i_num_episodes' % (self.env.env.cur_idx)] += 1
             batch += episode
@@ -236,7 +238,7 @@ class Trainer(object):
         self.stats['task%i_num_steps' % (self.env.env.cur_idx)] = len(batch)
         # print(self.stats['task%i_num_steps' % (self.env.env.cur_idx)])
         batch = Transition(*zip(*batch))
-        return batch, self.stats
+        return batch, self.stats, np.array(meta_reward)
 
     def train_batch(self, epoch):
         batch, stat = self.run_batch(epoch)

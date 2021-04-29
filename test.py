@@ -195,14 +195,18 @@ def run(num_epochs):
     for ep in range(num_epochs):
         epoch_begin_time = time.time()
         stat = dict()
+        meta_reward = np.zeros(args.batch_size)
         for n in range(args.epoch_size):
             if n == args.epoch_size - 1 and args.display:
                 trainer.display = True
-            batch, s = trainer.run_batch(ep)
+            batch, s, meta_rwd= trainer.run_batch(ep)
+            meta_reward += meta_rwd
             merge_stat(s, stat)
             trainer.display = False
             print('batch: ', n)
 
+        meta_reward /= args.epoch_size
+        print('meta_reward', meta_reward.tolist())
         epoch_time = time.time() - epoch_begin_time
         epoch = ep + 1
 
