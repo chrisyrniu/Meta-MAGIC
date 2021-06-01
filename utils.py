@@ -106,9 +106,7 @@ def pca(X, k=2):
 
 def init_args_for_env(parser):
     env_dict = {
-        'levers': 'Levers-v0',
-        'number_pairs': 'NumberPairs-v0',
-        'predator_prey': 'PredatorPrey-v0',
+        'predator_prey': 'PP_Multi_Task-v0',
         'traffic_junction': 'TrafficJunction-v0',
         'grf': 'GRFWrapper-v0'
     }
@@ -124,6 +122,7 @@ def init_args_for_env(parser):
 
     import gym
     import ic3net_envs
+    import pp_multi_envs
     import grf_envs_meta
 
     env = gym.make(env_dict[env_name])

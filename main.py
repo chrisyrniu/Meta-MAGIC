@@ -25,7 +25,7 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 
 parser = argparse.ArgumentParser(description='Multi-Agent Graph Attention Communication')
 
-parser.add_argument('--mode', default='meta-train', type=str,
+parser.add_argument('--training_mode', default='meta-train', type=str,
                     help='mode of meta-learning (meta-train|meta-test)')
 
 parser.add_argument('--num_epochs', default=100, type=int,
@@ -202,7 +202,7 @@ log = dict()
 
 highest_rewards = []
 log['epoch'] = LogField(list(), False, None, None)
-for i in range(len(args.scenarios)):
+for i in range(len(args.num_controlled_agents)):
     # log['task%i_epoch' % i] = LogField(list(), False, None, None)
     log['task%i_reward' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
     log['task%i_success' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
@@ -261,7 +261,7 @@ def run(num_epochs):
         # print('Reward: {}'.format(stat['reward']))
         print('Time: {:.2f}s'.format(epoch_time))
 
-        for i in range(len(args.scenarios)):
+        for i in range(len(args.num_controlled_agents)):
             print('Task {} Reward: {}'.format(i, stat['task%i_reward' % i]))
             print('Task {} Success: {}'.format(i, stat['task%i_success' % i]))
             print('Task {} Steps-Taken: {}'.format(i, stat['task%i_steps_taken' % i]))
@@ -291,11 +291,11 @@ def run(num_epochs):
         if args.save:
             save(final=True)
             
-        if args.mode == "meta-train":
+        if args.training_mode == "meta-train":
             if ep > 200:
                 total_reward = 0
                 save_flag = False
-                for i in range(len(args.scenarios)):
+                for i in range(len(args.num_controlled_agents)):
                     mean_reward = np.mean(stat['task%i_reward' % i])
                     if highest_rewards[i] < mean_reward:
                         highest_rewards[i] = mean_reward
@@ -324,7 +324,7 @@ def load(path, mode):
     d = torch.load(path)
     # log.clear()
     policy_net.load_state_dict(d['policy_net'])
-    if mode == 'meta-train':
+    if training_mode == 'meta-train':
         log.update(d['log'])
     trainer.load_state_dict(d['trainer'])
 

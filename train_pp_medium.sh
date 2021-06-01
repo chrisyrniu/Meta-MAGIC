@@ -2,14 +2,16 @@
 export OMP_NUM_THREADS=1
 
 python -u main.py \
+  --training_mode meta-train \
   --env_name predator_prey \
-  --nagents 5 \
+  --num_controlled_agents 4 5 6 \
   --dim 10 \
   --max_steps 40 \
   --vision 1 \
   --nprocesses 16 \
   --num_epochs 500 \
-  --epoch_size 10 \
+  --epoch_size 15 \
+  --batch_size 1000 \
   --hid_size 128 \
   --value_coeff 0.015 \
   --detach_gap 10 \
@@ -30,6 +32,9 @@ python -u main.py \
   --recurrent \
   --save \
   --seed 0 \
+  --plot \
+  --plot_env multi_task_vanilla_magic_pp_medium_4_5_6 \
+  --plot_port 8009 \
   | tee train_pp_medium.log
 
 
