@@ -292,7 +292,7 @@ def run(num_epochs):
             save(final=True)
             
         if args.training_mode == "meta-train":
-            if ep > 200:
+            if ep > 100:
                 total_reward = 0
                 save_flag = False
                 for i in range(len(args.num_controlled_agents)):
@@ -324,7 +324,7 @@ def load(path, mode):
     d = torch.load(path)
     # log.clear()
     policy_net.load_state_dict(d['policy_net'])
-    if training_mode == 'meta-train':
+    if args.training_mode == 'meta-train':
         log.update(d['log'])
     trainer.load_state_dict(d['trainer'])
 

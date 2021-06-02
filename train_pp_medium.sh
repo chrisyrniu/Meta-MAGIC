@@ -2,15 +2,15 @@
 export OMP_NUM_THREADS=1
 
 python -u main.py \
-  --training_mode meta-train \
+  --training_mode meta-test \
   --env_name predator_prey \
-  --num_controlled_agents 4 5 6 \
+  --num_controlled_agents 6 \
   --dim 10 \
   --max_steps 40 \
   --vision 1 \
   --nprocesses 16 \
   --num_epochs 500 \
-  --epoch_size 15 \
+  --epoch_size 5 \
   --batch_size 1000 \
   --hid_size 128 \
   --value_coeff 0.015 \
@@ -31,10 +31,11 @@ python -u main.py \
   --second_gat_normalize \
   --recurrent \
   --save \
+  --load model_ep208.pt \
   --seed 0 \
   --plot \
-  --plot_env multi_task_vanilla_magic_pp_medium_4_5_6 \
-  --plot_port 8009 \
+  --plot_env multi_task_vanilla_magic_pp_medium_6_finetune_from_4_5 \
+  --plot_port 8097 \
   | tee train_pp_medium.log
 
 

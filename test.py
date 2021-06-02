@@ -23,7 +23,10 @@ torch.utils.backcompat.keepdim_warning.enabled = True
 
 torch.set_default_tensor_type('torch.DoubleTensor')
 
-parser = argparse.ArgumentParser(description='MARL with Graph-Based Communication')
+parser = argparse.ArgumentParser(description='Multi-Agent Graph Attention Communication')
+
+parser.add_argument('--training_mode', default='meta-train', type=str,
+                    help='mode of meta-learning (meta-train|meta-test)')
 
 parser.add_argument('--num_epochs', default=100, type=int,
                     help='number of training epochs')
@@ -74,8 +77,8 @@ parser.add_argument('--message_encoder', action='store_true', default=False,
                     help='if use message encoder')
 parser.add_argument('--message_decoder', action='store_true', default=False,
                     help='if use message decoder')
-parser.add_argument('--nagents', type=int, default=1,
-                    help="Number of agents (used in multiagent)")
+# parser.add_argument('--nagents', type=int, default=1,
+#                     help="Number of agents (used in multiagent)")
 parser.add_argument('--mean_ratio', default=0, type=float,
                     help='how much coooperative to do? 1.0 means fully cooperative')
 parser.add_argument('--detach_gap', default=10000, type=int,
@@ -111,11 +114,18 @@ parser.add_argument('--nactions', default='1', type=str,
 parser.add_argument('--action_scale', default=1.0, type=float,
                     help='scale action output from model')
 # other
-
-parser.add_argument('--run_num', default=1, type=int,
-                    help='load models in which run')
-parser.add_argument('--ep_num', default=0, type=int,
-                    help='load models saved from which epoch')
+parser.add_argument('--plot', action='store_true', default=False,
+                    help='plot training progress')
+parser.add_argument('--plot_env', default='main', type=str,
+                    help='plot env name')
+parser.add_argument('--plot_port', default='8097', type=str,
+                    help='plot port')
+parser.add_argument('--save', action="store_true", default=False,
+                    help='save the model after training')
+parser.add_argument('--save_every', default=0, type=int,
+                    help='save the model after every n_th epoch')
+parser.add_argument('--load', default='', type=str,
+                    help='load the model')
 parser.add_argument('--display', action="store_true", default=False,
                     help='Display environment state')
 parser.add_argument('--random', action='store_true', default=False,
@@ -125,12 +135,12 @@ parser.add_argument('--random', action='store_true', default=False,
 init_args_for_env(parser)
 args = parser.parse_args()
 
-args.nfriendly = args.nagents
-if hasattr(args, 'enemy_comm') and args.enemy_comm:
-    if hasattr(args, 'nenemies'):
-        args.nagents += args.nenemies
-    else:
-        raise RuntimeError("Env. needs to pass argument 'nenemy'.")
+# args.nfriendly = args.nagents
+# if hasattr(args, 'enemy_comm') and args.enemy_comm:
+#     if hasattr(args, 'nenemies'):
+#         args.nagents += args.nenemies
+#     else:
+#         raise RuntimeError("Env. needs to pass argument 'nenemy'.")
 
 if args.env_name == 'grf':
     render = args.render
@@ -177,21 +187,51 @@ else:
     trainer = Trainer(args, policy_net, data.init(args.env_name, args))
 
 log = dict()
+
+# log['epoch'] = LogField(list(), False, None, None)
+# log['reward'] = LogField(list(), True, 'epoch', 'num_episodes')
+# log['enemy_reward'] = LogField(list(), True, 'epoch', 'num_episodes')
+# log['success'] = LogField(list(), True, 'epoch', 'num_episodes')
+# log['steps_taken'] = LogField(list(), True, 'epoch', 'num_episodes')
+# log['add_rate'] = LogField(list(), True, 'epoch', 'num_episodes')
+# log['comm_action'] = LogField(list(), True, 'epoch', 'num_steps')
+# log['enemy_comm'] = LogField(list(), True, 'epoch', 'num_steps')
+# log['value_loss'] = LogField(list(), True, 'epoch', 'num_steps')
+# log['action_loss'] = LogField(list(), True, 'epoch', 'num_steps')
+# log['entropy'] = LogField(list(), True, 'epoch', 'num_steps')
+
+highest_rewards = []
 log['epoch'] = LogField(list(), False, None, None)
-for i in range(len(args.scenarios)):
+for i in range(len(args.num_controlled_agents)):
     # log['task%i_epoch' % i] = LogField(list(), False, None, None)
     log['task%i_reward' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
     log['task%i_success' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
     log['task%i_steps_taken' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
+    highest_rewards.append(-1000000)
 
-    
+if args.plot:
+    vis = visdom.Visdom(env=args.plot_env, port=args.plot_port)
+
 model_dir = Path('./saved') / args.env_name / args.gnn_type
 if args.env_name == 'grf':
-    model_dir = model_dir
-curr_run = 'run' + str(args.run_num)
+    model_dir = model_dir 
+if not model_dir.exists():
+    curr_run = 'run1'
+else:
+    exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in
+                     model_dir.iterdir() if
+                     str(folder.name).startswith('run')]
+    if len(exst_run_nums) == 0:
+        curr_run = 'run1'
+    else:
+        curr_run = 'run%i' % (max(exst_run_nums) + 1)
 run_dir = model_dir / curr_run 
 
 def run(num_epochs): 
+    highest_total_reward = -1000000
+    num_episodes = 0
+    if args.save:
+        os.makedirs(run_dir)
     for ep in range(num_epochs):
         epoch_begin_time = time.time()
         stat = dict()
@@ -202,10 +242,11 @@ def run(num_epochs):
             merge_stat(s, stat)
             trainer.display = False
             print('batch: ', n)
+            trainer.display = False
 
         epoch_time = time.time() - epoch_begin_time
-        epoch = ep + 1
-
+        epoch = len(log['epoch'].data) + 1
+        # num_episodes += stat['num_episodes']
         for k, v in log.items():
             if k == 'epoch':
                 v.data.append(epoch)
@@ -213,19 +254,79 @@ def run(num_epochs):
                 if k in stat and v.divide_by is not None and stat[v.divide_by] > 0:
                     stat[k] = stat[k] / stat[v.divide_by]
                 v.data.append(stat.get(k, 0))
+
+        # np.set_printoptions(precision=2)
         
-        np.set_printoptions(precision=2)
-        
-        print('Epoch {}'.format(epoch))        
-        for i in range(len(args.scenarios)):
+        print('Epoch {}'.format(epoch))
+        # print('Episode: {}'.format(num_episodes))
+        # print('Reward: {}'.format(stat['reward']))
+        print('Time: {:.2f}s'.format(epoch_time))
+
+        for i in range(len(args.num_controlled_agents)):
             print('Task {} Reward: {}'.format(i, stat['task%i_reward' % i]))
             print('Task {} Success: {}'.format(i, stat['task%i_success' % i]))
             print('Task {} Steps-Taken: {}'.format(i, stat['task%i_steps_taken' % i]))
+        
+        # if 'enemy_reward' in stat.keys():
+        #     print('Enemy-Reward: {}'.format(stat['enemy_reward']))
+        # if 'add_rate' in stat.keys():
+        #     print('Add-Rate: {:.2f}'.format(stat['add_rate']))
+        # if 'success' in stat.keys():
+        #     print('Success: {:.4f}'.format(stat['success']))
+        # if 'steps_taken' in stat.keys():
+        #     print('Steps-Taken: {:.2f}'.format(stat['steps_taken']))
+        # if 'comm_action' in stat.keys():
+        #     print('Comm-Action: {}'.format(stat['comm_action']))
+        # if 'enemy_comm' in stat.keys():
+        #     print('Enemy-Comm: {}'.format(stat['enemy_comm']))
 
-def load(path):
+        if args.plot:
+            for k, v in log.items():
+                if v.plot and len(v.data) > 0:
+                    vis.line(np.asarray(v.data), np.asarray(log[v.x_axis].data[-len(v.data):]),
+                    win=k, opts=dict(xlabel=v.x_axis, ylabel=k))
+    
+        if args.save_every and ep and args.save and (ep+1) % args.save_every == 0:
+            save(final=False, epoch=ep+1)
+
+        if args.save:
+            save(final=True)
+            
+        if args.training_mode == "meta-train":
+            if ep > 100:
+                total_reward = 0
+                save_flag = False
+                for i in range(len(args.num_controlled_agents)):
+                    mean_reward = np.mean(stat['task%i_reward' % i])
+                    if highest_rewards[i] < mean_reward:
+                        highest_rewards[i] = mean_reward
+                        save_flag = True
+#                         print('saved on %i!' % i)
+                    total_reward += mean_reward
+                if highest_total_reward < total_reward:
+                    highest_total_reward = total_reward
+                    save_flag = True
+#                     print('saved!')
+                if save_flag:
+                    save(final=False, epoch=ep+1)
+            
+
+def save(final, epoch=0): 
+    d = dict()
+    d['policy_net'] = policy_net.state_dict()
+    d['log'] = log
+    d['trainer'] = trainer.state_dict()
+    if final:
+        torch.save(d, run_dir / 'model.pt')
+    else:
+        torch.save(d, run_dir / ('model_ep%i.pt' %(epoch)))
+
+def load(path, mode):
     d = torch.load(path)
     # log.clear()
     policy_net.load_state_dict(d['policy_net'])
+    if args.training_mode == 'meta-train':
+        log.update(d['log'])
     trainer.load_state_dict(d['trainer'])
 
 def signal_handler(signal, frame):
@@ -236,20 +337,20 @@ def signal_handler(signal, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-if args.ep_num == 0:
-    path = run_dir / 'model.pt'
-else:
-    path = run_dir / ('model_ep%i.pt' %(args.ep_num))
-    
-load(path)
+if args.load != '':
+    load(args.load, args.mode)
 
 run(args.num_epochs)
 if args.display:
     env.end_display()
 
+if args.save:
+    save(final=True)
+
 if sys.flags.interactive == 0 and args.nprocesses > 1:
     trainer.quit()
     import os
     os._exit(0)
+
 
 
