@@ -30,7 +30,6 @@ python -u test.py \
   --first_gat_normalize \
   --second_gat_normalize \
   --recurrent \
-  --save \
   --load model_ep208.pt \
   --seed 0 \
   | tee test_pp_medium.log

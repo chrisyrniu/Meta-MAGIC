@@ -55,6 +55,8 @@ parser.add_argument('--gat_num_heads_out', default=1, type=int,
                     help='number of heads in output gat layer')
 parser.add_argument('--gat_hid_size', default=64, type=int,
                     help='hidden size of one head in gat')
+parser.add_argument('--gat_dropout', default=0, type=int,
+                    help='dropout rate in the gat layer')
 parser.add_argument('--ge_num_heads', default=4, type=int,
                     help='number of heads in the gat encoder')
 parser.add_argument('--first_gat_normalize', action='store_true', default=False,
@@ -292,7 +294,7 @@ def run(num_epochs):
             save(final=True)
             
         if args.training_mode == "meta-train":
-            if ep > 100:
+            if ep > 150:
                 total_reward = 0
                 save_flag = False
                 for i in range(len(args.num_controlled_agents)):

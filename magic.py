@@ -21,10 +21,10 @@ class MAGIC(nn.Module):
         if args.gnn_type == 'gat':
             dropout = 0
             negative_slope = 0.2
-            self.gconv1 = GraphAttention(args.hid_size, args.gat_hid_size, dropout=dropout, negative_slope=negative_slope, num_heads=args.gat_num_heads, self_loop_type=args.self_loop_type1, average=False, normalize=args.first_gat_normalize)
-            self.gconv2 = GraphAttention(args.gat_hid_size*args.gat_num_heads, args.hid_size, dropout=dropout, negative_slope=negative_slope, num_heads=args.gat_num_heads_out, self_loop_type=args.self_loop_type2, average=True, normalize=args.second_gat_normalize)
+            self.gconv1 = GraphAttention(args.hid_size, args.gat_hid_size, dropout=args.gat_dropout, negative_slope=negative_slope, num_heads=args.gat_num_heads, self_loop_type=args.self_loop_type1, average=False, normalize=args.first_gat_normalize)
+            self.gconv2 = GraphAttention(args.gat_hid_size*args.gat_num_heads, args.hid_size, dropout=args.gat_dropout, negative_slope=negative_slope, num_heads=args.gat_num_heads_out, self_loop_type=args.self_loop_type2, average=True, normalize=args.second_gat_normalize)
             if args.use_gconv_encoder:
-                self.gconv_encoder = GraphAttention(args.hid_size, args.gconv_encoder_out_size, dropout=dropout, negative_slope=negative_slope, num_heads=args.ge_num_heads, self_loop_type=1, average=True, normalize=args.gconv_gat_normalize)
+                self.gconv_encoder = GraphAttention(args.hid_size, args.gconv_encoder_out_size, dropout=args.gat_dropout, negative_slope=negative_slope, num_heads=args.ge_num_heads, self_loop_type=1, average=True, normalize=args.gconv_gat_normalize)
             
         if args.gnn_type == 'gcn':
             self.gconv1 = GraphConvolution(args.hid_size, args.hid_size, self_loop_type=args.self_loop_type1)
