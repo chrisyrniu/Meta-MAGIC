@@ -37,6 +37,6 @@ python -u main.py \
   --save \
   --seed 5678 \
   --plot \
-  --plot_env multi_task_vanilla_magic_grf_33_seed_5678_max_44 \
+  --plot_env multi_task_vanilla_magic_grf_33_max_44_dropout_0.2_seed_5678 \
   --plot_port 8097 \
   | tee train_grf.log

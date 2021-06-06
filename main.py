@@ -55,7 +55,7 @@ parser.add_argument('--gat_num_heads_out', default=1, type=int,
                     help='number of heads in output gat layer')
 parser.add_argument('--gat_hid_size', default=64, type=int,
                     help='hidden size of one head in gat')
-parser.add_argument('--gat_dropout', default=0, type=int,
+parser.add_argument('--gat_dropout', default=0, type=float,
                     help='dropout rate in the gat layer')
 parser.add_argument('--ge_num_heads', default=4, type=int,
                     help='number of heads in the gat encoder')
