@@ -2,7 +2,7 @@
 export OMP_NUM_THREADS=1
 
 python -u main.py \
-  --mode meta-train \
+  --training_mode meta-train \
   --env_name grf \
   --scenarios 3_vs_2_with_keeper \
   --num_controlled_agents 3 \
