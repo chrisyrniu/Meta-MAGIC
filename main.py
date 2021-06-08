@@ -339,7 +339,7 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 if args.load != '':
-    load(args.load, args.mode)
+    load(args.load, args.training_mode)
 
 run(args.num_epochs)
 if args.display:

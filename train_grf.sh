@@ -24,7 +24,7 @@ python -u main.py \
   --gat_hid_size 128 \
   --gat_num_heads_out 1 \
   --ge_num_heads 8 \
-  --gat_dropout 0.2 \
+  --gat_dropout 0 \
   --use_gconv_encoder \
   --gconv_encoder_out_size 32 \
   --self_loop_type1 2 \
@@ -37,6 +37,6 @@ python -u main.py \
   --save \
   --seed 5678 \
   --plot \
-  --plot_env multi_task_vanilla_magic_grf_33_max_44_dropout_0.2_seed_5678 \
+  --plot_env multi_task_vanilla_magic_grf_33_max_44_seed_5678 \
   --plot_port 8097 \
   | tee train_grf.log

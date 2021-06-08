@@ -55,6 +55,8 @@ parser.add_argument('--gat_num_heads_out', default=1, type=int,
                     help='number of heads in output gat layer')
 parser.add_argument('--gat_hid_size', default=64, type=int,
                     help='hidden size of one head in gat')
+parser.add_argument('--gat_dropout', default=0, type=float,
+                    help='dropout rate in the gat layer')
 parser.add_argument('--ge_num_heads', default=4, type=int,
                     help='number of heads in the gat encoder')
 parser.add_argument('--first_gat_normalize', action='store_true', default=False,
@@ -338,7 +340,7 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 if args.load != '':
-    load(args.load, args.mode)
+    load(args.load, args.training_mode)
 
 run(args.num_epochs)
 if args.display:
