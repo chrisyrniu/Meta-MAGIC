@@ -15,6 +15,7 @@ from action_utils import parse_action_args
 from trainer import Trainer
 from multi_processing import MultiProcessTrainer
 import gym
+import random
 
 gym.logger.set_level(40)
 
@@ -79,8 +80,6 @@ parser.add_argument('--message_encoder', action='store_true', default=False,
                     help='if use message encoder')
 parser.add_argument('--message_decoder', action='store_true', default=False,
                     help='if use message decoder')
-# parser.add_argument('--nagents', type=int, default=1,
-#                     help="Number of agents (used in multiagent)")
 parser.add_argument('--mean_ratio', default=0, type=float,
                     help='how much coooperative to do? 1.0 means fully cooperative')
 parser.add_argument('--detach_gap', default=10000, type=int,
@@ -137,13 +136,6 @@ parser.add_argument('--random', action='store_true', default=False,
 init_args_for_env(parser)
 args = parser.parse_args()
 
-# args.nfriendly = args.nagents
-# if hasattr(args, 'enemy_comm') and args.enemy_comm:
-#     if hasattr(args, 'nenemies'):
-#         args.nagents += args.nenemies
-#     else:
-#         raise RuntimeError("Env. needs to pass argument 'nenemy'.")
-
 if args.env_name == 'grf':
     render = args.render
     args.render = False
@@ -163,6 +155,8 @@ parse_action_args(args)
 if args.seed == -1:
     args.seed = np.random.randint(0,10000)
 torch.manual_seed(args.seed)
+np.random.seed(args.seed)
+random.seed(args.seed)
 
 print(args)
 
@@ -190,18 +184,6 @@ else:
 
 log = dict()
 
-# log['epoch'] = LogField(list(), False, None, None)
-# log['reward'] = LogField(list(), True, 'epoch', 'num_episodes')
-# log['enemy_reward'] = LogField(list(), True, 'epoch', 'num_episodes')
-# log['success'] = LogField(list(), True, 'epoch', 'num_episodes')
-# log['steps_taken'] = LogField(list(), True, 'epoch', 'num_episodes')
-# log['add_rate'] = LogField(list(), True, 'epoch', 'num_episodes')
-# log['comm_action'] = LogField(list(), True, 'epoch', 'num_steps')
-# log['enemy_comm'] = LogField(list(), True, 'epoch', 'num_steps')
-# log['value_loss'] = LogField(list(), True, 'epoch', 'num_steps')
-# log['action_loss'] = LogField(list(), True, 'epoch', 'num_steps')
-# log['entropy'] = LogField(list(), True, 'epoch', 'num_steps')
-
 highest_rewards = []
 log['epoch'] = LogField(list(), False, None, None)
 for i in range(len(args.num_controlled_agents)):
@@ -210,6 +192,7 @@ for i in range(len(args.num_controlled_agents)):
     log['task%i_success' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
     log['task%i_steps_taken' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
     highest_rewards.append(-1000000)
+
 
 if args.plot:
     vis = visdom.Visdom(env=args.plot_env, port=args.plot_port)
@@ -228,6 +211,7 @@ else:
     else:
         curr_run = 'run%i' % (max(exst_run_nums) + 1)
 run_dir = model_dir / curr_run 
+
 
 def run(num_epochs): 
     highest_total_reward = -1000000
@@ -267,19 +251,6 @@ def run(num_epochs):
             print('Task {} Reward: {}'.format(i, stat['task%i_reward' % i]))
             print('Task {} Success: {}'.format(i, stat['task%i_success' % i]))
             print('Task {} Steps-Taken: {}'.format(i, stat['task%i_steps_taken' % i]))
-        
-        # if 'enemy_reward' in stat.keys():
-        #     print('Enemy-Reward: {}'.format(stat['enemy_reward']))
-        # if 'add_rate' in stat.keys():
-        #     print('Add-Rate: {:.2f}'.format(stat['add_rate']))
-        # if 'success' in stat.keys():
-        #     print('Success: {:.4f}'.format(stat['success']))
-        # if 'steps_taken' in stat.keys():
-        #     print('Steps-Taken: {:.2f}'.format(stat['steps_taken']))
-        # if 'comm_action' in stat.keys():
-        #     print('Comm-Action: {}'.format(stat['comm_action']))
-        # if 'enemy_comm' in stat.keys():
-        #     print('Enemy-Comm: {}'.format(stat['enemy_comm']))
 
         if args.plot:
             for k, v in log.items():
@@ -324,7 +295,6 @@ def save(final, epoch=0):
 
 def load(path, mode):
     d = torch.load(path)
-    # log.clear()
     policy_net.load_state_dict(d['policy_net'])
     if args.training_mode == 'meta-train':
         log.update(d['log'])

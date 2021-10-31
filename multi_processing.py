@@ -2,6 +2,7 @@ import time
 from utils import *
 import torch
 import torch.multiprocessing as mp
+import random
 
 class MultiProcessWorker(mp.Process):
     # TODO: Make environment init threadsafe
@@ -15,6 +16,7 @@ class MultiProcessWorker(mp.Process):
     def run(self):
         torch.manual_seed(self.seed + self.id + 1)
         np.random.seed(self.seed + self.id + 1)
+        random.seed(self.seed + self.id + 1)
 
         while True:
             task = self.comm.recv()
