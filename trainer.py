@@ -36,12 +36,8 @@ class Trainer(object):
             self.env.display()
         stat = dict()
         info = dict()
-        switch_t = -1
 
         nagents = state.size()[1]
-
-        if meta_reset:
-            prev_hid = torch.zeros(1, nagents, self.args.hid_size)
 
         prev_action = np.array([0] * nagents)
         prev_reward = [0] * nagents
@@ -49,25 +45,22 @@ class Trainer(object):
         for t in range(self.args.max_steps):
             misc = dict()
             # recurrence over time
-            if  t == 0:
+            if  meta_reset and t == 0:
                 prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0], nagents=nagents)
 
-            x = [state, prev_hid]
+            if self.args.vanilla:
+                x = [state, prev_hid]
+            else:
+                x = [state, prev_action, prev_reward, prev_hid]
             action_out, value, prev_hid = self.policy_net(x, info)
 
-            if (t + 1) % self.args.detach_gap == 0:
-                prev_hid = (prev_hid[0].detach(), prev_hid[1].detach())
-
-            # print('action_out', action_out)
+            if self.args.vanilla:
+                if (t + 1) % self.args.detach_gap == 0:
+                    prev_hid = (prev_hid[0].detach(), prev_hid[1].detach())
 
             action = select_action(self.args, action_out)
-            # print('action0', action)
             action, actual = translate_action(self.args, self.env, action)
             next_state, reward, done, info = self.env.step(actual)
-            # print('next_state', next_state)
-            # print('reward', reward)
-            # print('action', action)
-            # print('actual', actual)
             prev_action = action[0]
             prev_reward = reward
 
@@ -77,8 +70,6 @@ class Trainer(object):
                 misc['alive_mask'] = np.ones_like(reward)
 
             stat['task%i_reward' % (self.env.env.cur_idx)] = stat.get('task%i_reward' % (self.env.env.cur_idx), 0) + reward[:nagents]
-            # if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-            #     stat['enemy_reward'] = stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
 
             done = done or t == self.args.max_steps - 1
 
@@ -102,15 +93,6 @@ class Trainer(object):
 
         stat['task%i_num_steps' % (self.env.env.cur_idx)] = t + 1
         stat['task%i_steps_taken' % (self.env.env.cur_idx)] = stat['task%i_num_steps' % (self.env.env.cur_idx)]
-
-        # if hasattr(self.env, 'reward_terminal'):
-        #     reward = self.env.reward_terminal()
-
-        #     episode[-1] = episode[-1]._replace(reward = episode[-1].reward + reward)
-        #     stat['reward'] = stat.get('reward', 0) + reward[:nagents]
-        #     if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-        #         stat['enemy_reward'] = stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
-
 
         if hasattr(self.env, 'get_stat'):
             merge_stat(self.env.get_stat(), stat)
@@ -223,10 +205,13 @@ class Trainer(object):
         hid_state = None
         while len(batch) < self.args.batch_size:
             count += 1
-            if count == 1:
+            if self.args.vanilla:
                 meta_reset = True
             else:
-                meta_reset = False
+                if count == 1:
+                    meta_reset = True
+                else:
+                    meta_reset = False
             if self.args.batch_size - len(batch) <= self.args.max_steps:
                 self.last_step = True
             episode, episode_stat, hid_state = self.get_episode(epoch, meta_reset, hid_state)
@@ -243,16 +228,13 @@ class Trainer(object):
     def train_batch(self, epoch):
         batch, stat = self.run_batch(epoch)
         self.optimizer.zero_grad()
-
-        s = self.compute_grad(batch)
-        merge_stat(s, stat)
-#         for name, param in self.policy_net.named_parameters():
-#             print(name)
-#             print(param.grad)
-        for p in self.params:
-            if p._grad is not None:
-                p._grad.data /= stat['task%i_num_steps' % (self.env.env.cur_idx)]
-        self.optimizer.step()
+        if self.args.run_mode != "test":
+            s = self.compute_grad(batch)
+            merge_stat(s, stat)
+            for p in self.params:
+                if p._grad is not None:
+                    p._grad.data /= stat['task%i_num_steps' % (self.env.env.cur_idx)]
+            self.optimizer.step()
         self.env.change_env()
         return stat
 

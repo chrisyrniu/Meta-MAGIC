@@ -26,9 +26,12 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 
 parser = argparse.ArgumentParser(description='Multi-Agent Graph Attention Communication')
 
-parser.add_argument('--training_mode', default='meta-train', type=str,
-                    help='mode of meta-learning (meta-train|meta-test)')
-
+parser.add_argument('--run_mode', default='train', type=str,
+                    help='mode of running (train|test|fine-tune)')
+parser.add_argument('--vanilla', action='store_true', default=False,
+                    help='if use vanilla magic')
+parser.add_argument('--save_epochs', default=100, type=int,
+                    help='the epochs to start saving models')
 parser.add_argument('--num_epochs', default=100, type=int,
                     help='number of training epochs')
 parser.add_argument('--epoch_size', type=int, default=10,
@@ -175,6 +178,9 @@ disp_trainer.display = True
 def disp():
     x = disp_trainer.get_episode()
 
+if args.run_mode == "test":
+    args.nprocesses = 1
+
 if args.env_name == 'grf':
     args.render = render
 if args.nprocesses > 1:
@@ -225,7 +231,6 @@ def run(num_epochs):
             if n == args.epoch_size - 1 and args.display:
                 trainer.display = True
             s = trainer.train_batch(ep)
-            print('batch: ', n)
             merge_stat(s, stat)
             trainer.display = False
 
@@ -264,8 +269,8 @@ def run(num_epochs):
         if args.save:
             save(final=True)
             
-        if args.training_mode == "meta-train":
-            if ep > 150:
+        if args.run_mode == "train" or args.run_mode == "fine-tune":
+            if ep > args.save_epochs:
                 total_reward = 0
                 save_flag = False
                 for i in range(len(args.num_controlled_agents)):
@@ -273,12 +278,10 @@ def run(num_epochs):
                     if highest_rewards[i] < mean_reward:
                         highest_rewards[i] = mean_reward
                         save_flag = True
-#                         print('saved on %i!' % i)
                     total_reward += mean_reward
                 if highest_total_reward < total_reward:
                     highest_total_reward = total_reward
                     save_flag = True
-#                     print('saved!')
                 if save_flag:
                     save(final=False, epoch=ep+1)
             
@@ -296,7 +299,7 @@ def save(final, epoch=0):
 def load(path, mode):
     d = torch.load(path)
     policy_net.load_state_dict(d['policy_net'])
-    if args.training_mode == 'meta-train':
+    if mode == 'train':
         log.update(d['log'])
     trainer.load_state_dict(d['trainer'])
 
@@ -309,7 +312,7 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 if args.load != '':
-    load(args.load, args.training_mode)
+    load(args.load, args.run_mode)
 
 run(args.num_epochs)
 if args.display:
