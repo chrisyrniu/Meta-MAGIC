@@ -13,9 +13,10 @@ class MAGIC(nn.Module):
         self.recurrent = args.recurrent
         self.obs_dim = obs_dim
         self.act_num = self.args.num_actions[0]
-        # self.obs_embd_dim = 64
-        # self.act_embd_dim = 32
-        # self.rwd_embd_dim = 32
+        self.obs_embd_dim = 64
+        self.act_embd_dim = 32
+        self.rwd_embd_dim = 16
+        self.done_embd_dim = 16
         
         if args.gnn_type == 'gat':
             dropout = 0
@@ -37,11 +38,28 @@ class MAGIC(nn.Module):
                 nn.ReLU(),
                 nn.Linear(self.hid_size, self.hid_size))
         else:
-            # self.obs_encoder = nn.Linear(obs_dim, self.obs_embd_dim)
-            # self.act_encoder = nn.Linear(self.act_num, self.act_embd_dim)
-            # self.rwd_encoder = nn.Linear(1, self.rwd_embd_dim)
+            self.obs_encoder = nn.Sequential(
+                nn.Linear(obs_dim, self.obs_embd_dim),
+                nn.ReLU(),
+                nn.Linear(self.obs_embd_dim, self.obs_embd_dim)
+            )
+            self.act_encoder = nn.Sequential(
+                nn.Linear(self.act_num, self.act_embd_dim),
+                nn.ReLU(),
+                nn.Linear(self.act_embd_dim, self.act_embd_dim)
+            )
+            self.rwd_encoder = nn.Sequential(
+                nn.Linear(1, self.rwd_embd_dim),
+                nn.ReLU(),
+                nn.Linear(self.rwd_embd_dim, self.rwd_embd_dim)
+            )
+            self.done_encoder = nn.Sequential(
+                nn.Linear(2, self.done_embd_dim),
+                nn.ReLU(),
+                nn.Linear(self.done_embd_dim, self.done_embd_dim)
+            )
             self.encoder = nn.Sequential(
-                nn.Linear(self.obs_dim + self.act_num + 1 + 1, self.hid_size),
+                nn.Linear(self.obs_embd_dim + self.act_embd_dim + self.rwd_embd_dim + self.done_embd_dim, self.hid_size),
                 nn.ReLU(),
                 nn.Linear(self.hid_size, self.hid_size))
 
@@ -186,12 +204,13 @@ class MAGIC(nn.Module):
             x = self.encoder(x)
         else:
             obs, prev_action, prev_reward, prev_done, extras = x
+            obs = self.obs_encoder(obs)
             prev_action = F.one_hot(torch.tensor(prev_action).to(torch.int64), num_classes=self.act_num).unsqueeze(0).expand(obs.size()[0], obs.size()[1], -1)
-            prev_action = prev_action.to(torch.float64)
+            prev_action = self.act_encoder(prev_action.to(torch.float64))
             prev_reward = torch.tensor(prev_reward).view(1, -1, 1).expand(obs.size()[0], obs.size()[1], -1)
-            prev_reward = prev_reward.to(torch.float64)
-            prev_done = torch.tensor(prev_done).view(1, -1, 1).expand(obs.size()[0], obs.size()[1], -1)
-            prev_done = prev_done.to(torch.float64)
+            prev_reward = self.rwd_encoder(prev_reward.to(torch.float64))
+            prev_done = F.one_hot(torch.tensor(prev_done).to(torch.int64), num_classes=2).unsqueeze(0).expand(obs.size()[0], obs.size()[1], -1)
+            prev_done = self.done_encoder(prev_done.to(torch.float64))
             meta_state = torch.cat((obs, prev_action, prev_reward, prev_done), dim=-1)
             x = self.encoder(meta_state)
 
