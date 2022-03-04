@@ -40,7 +40,8 @@ class Trainer(object):
         nagents = state.size()[1]
 
         prev_action = np.array([0] * nagents)
-        prev_reward = [0] * nagents
+        prev_reward = np.array([0] * nagents)
+        prev_done = np.array([1] * nagents)
 
         for t in range(self.args.max_steps):
             misc = dict()
@@ -51,7 +52,7 @@ class Trainer(object):
             if self.args.vanilla:
                 x = [state, prev_hid]
             else:
-                x = [state, prev_action, prev_reward, prev_hid]
+                x = [state, prev_action, prev_reward, prev_done, prev_hid]
             action_out, value, prev_hid = self.policy_net(x, info)
 
             if self.args.vanilla:
@@ -72,6 +73,7 @@ class Trainer(object):
             stat['task%i_reward' % (self.env.env.cur_idx)] = stat.get('task%i_reward' % (self.env.env.cur_idx), 0) + reward[:nagents]
 
             done = done or t == self.args.max_steps - 1
+            prev_done = np.array([done] * nagents)
 
             episode_mask = np.ones(reward.shape)
             episode_mini_mask = np.ones(reward.shape)
