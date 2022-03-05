@@ -23,7 +23,7 @@ class Trainer(object):
         self.params = [p for p in self.policy_net.parameters()]
 
 
-    def get_episode(self, epoch, meta_reset, prev_hid):
+    def get_episode(self, epoch, meta_reset, meta_info):
         episode = []
         reset_args = getargspec(self.env.reset).args
         if 'epoch' in reset_args:
@@ -39,15 +39,16 @@ class Trainer(object):
 
         nagents = state.size()[1]
 
-        prev_action = np.array([0] * nagents)
-        prev_reward = np.array([0] * nagents)
-        prev_done = np.array([1] * nagents)
+        if meta_reset:
+            prev_action = np.array([-1] * nagents)
+            prev_reward = np.array([0] * nagents)
+            prev_done = np.array([1] * nagents)
+            prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0], nagents=nagents)
+        else:
+            prev_action, prev_reward, prev_done, prev_hid = meta_info
 
         for t in range(self.args.max_steps):
             misc = dict()
-            # recurrence over time
-            if  meta_reset and t == 0:
-                prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0], nagents=nagents)
 
             if self.args.vanilla:
                 x = [state, prev_hid]
@@ -98,7 +99,7 @@ class Trainer(object):
 
         if hasattr(self.env, 'get_stat'):
             merge_stat(self.env.get_stat(), stat)
-        return (episode, stat, prev_hid)
+        return (episode, stat, (prev_action, prev_reward, prev_done, prev_hid))
 
 
     def compute_grad(self, batch):
@@ -204,7 +205,7 @@ class Trainer(object):
         self.stats['task%i_num_episodes' % (self.env.env.cur_idx)] = 0
         count = 0
         meta_reset = False
-        hid_state = None
+        meta_info = None
         while len(batch) < self.args.batch_size:
             count += 1
             if self.args.vanilla:
@@ -216,7 +217,7 @@ class Trainer(object):
                     meta_reset = False
             if self.args.batch_size - len(batch) <= self.args.max_steps:
                 self.last_step = True
-            episode, episode_stat, hid_state = self.get_episode(epoch, meta_reset, hid_state)
+            episode, episode_stat, meta_info = self.get_episode(epoch, meta_reset, meta_info)
             merge_stat(episode_stat, self.stats)
             self.stats['task%i_num_episodes' % (self.env.env.cur_idx)] += 1
             batch += episode

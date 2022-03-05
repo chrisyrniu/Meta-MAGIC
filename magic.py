@@ -205,7 +205,10 @@ class MAGIC(nn.Module):
         else:
             obs, prev_action, prev_reward, prev_done, extras = x
             obs = self.obs_encoder(obs)
-            prev_action = F.one_hot(torch.tensor(prev_action).to(torch.int64), num_classes=self.act_num).unsqueeze(0).expand(obs.size()[0], obs.size()[1], -1)
+            if -1 in prev_action:
+                prev_action = torch.zeros(obs.size()[0], obs.size()[1], self.act_num)
+            else:
+                prev_action = F.one_hot(torch.tensor(prev_action).to(torch.int64), num_classes=self.act_num).unsqueeze(0).expand(obs.size()[0], obs.size()[1], -1)
             prev_action = self.act_encoder(prev_action.to(torch.float64))
             prev_reward = torch.tensor(prev_reward).view(1, -1, 1).expand(obs.size()[0], obs.size()[1], -1)
             prev_reward = self.rwd_encoder(prev_reward.to(torch.float64))

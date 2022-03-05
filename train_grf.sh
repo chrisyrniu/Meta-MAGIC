@@ -36,6 +36,6 @@ python -u main.py \
   --save \
   --seed 0 \
   --plot \
-  --plot_env v1_meta_magic_grf_22_32_33_max_44_seed_0 \
+  --plot_env v1_full_meta_info_meta_magic_grf_22_32_33_max_44_seed_0 \
   --plot_port 8097 \
   | tee train_grf.log
