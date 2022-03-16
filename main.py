@@ -40,6 +40,8 @@ parser.add_argument('--batch_size', type=int, default=500,
                     help='number of steps before each update (per thread)')
 parser.add_argument('--nprocesses', type=int, default=16,
                     help='How many processes to run')
+parser.add_argument('--test_episode_num', type=int, default=10,
+                    help='How many episodes in a batch during testing')                
 # model
 parser.add_argument('--hid_size', default=64, type=int,
                     help='hidden layer size')
@@ -227,10 +229,13 @@ def run(num_epochs):
     for ep in range(num_epochs):
         epoch_begin_time = time.time()
         stat = dict()
+        episode_reward_info = []
         for n in range(args.epoch_size):
             if n == args.epoch_size - 1 and args.display:
                 trainer.display = True
-            s = trainer.train_batch(ep)
+            s, episode_rewards = trainer.train_batch(ep)
+            if args.run_mode == 'test':
+                episode_reward_info.append(episode_rewards)
             merge_stat(s, stat)
             trainer.display = False
 
@@ -247,6 +252,10 @@ def run(num_epochs):
 
         # np.set_printoptions(precision=2)
         
+        if args.run_mode == 'test':
+            episode_reward_info = np.mean(np.array(episode_reward_info), axis=0)
+            print('Average episode reward', episode_reward_info)
+
         print('Epoch {}'.format(epoch))
         # print('Episode: {}'.format(num_episodes))
         # print('Reward: {}'.format(stat['reward']))

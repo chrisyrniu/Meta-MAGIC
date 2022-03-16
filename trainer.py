@@ -206,7 +206,8 @@ class Trainer(object):
         count = 0
         meta_reset = False
         meta_info = None
-        while len(batch) < self.args.batch_size:
+        episode_rewards = []
+        while (len(batch) < self.args.batch_size and self.args.run_mode != "test") or (len(episode_rewards) < self.args.test_episode_num and self.args.run_mode == "test"):
             count += 1
             if self.args.vanilla:
                 meta_reset = True
@@ -218,6 +219,7 @@ class Trainer(object):
             if self.args.batch_size - len(batch) <= self.args.max_steps:
                 self.last_step = True
             episode, episode_stat, meta_info = self.get_episode(epoch, meta_reset, meta_info)
+            episode_rewards.append(np.mean(episode_stat['task%i_reward' % (self.env.env.cur_idx)]))
             merge_stat(episode_stat, self.stats)
             self.stats['task%i_num_episodes' % (self.env.env.cur_idx)] += 1
             batch += episode
@@ -226,10 +228,10 @@ class Trainer(object):
         self.stats['task%i_num_steps' % (self.env.env.cur_idx)] = len(batch)
         # print(self.stats['task%i_num_steps' % (self.env.env.cur_idx)])
         batch = Transition(*zip(*batch))
-        return batch, self.stats
+        return batch, self.stats, episode_rewards
 
     def train_batch(self, epoch):
-        batch, stat = self.run_batch(epoch)
+        batch, stat, episode_rewards = self.run_batch(epoch)
         self.optimizer.zero_grad()
         if self.args.run_mode != "test":
             s = self.compute_grad(batch)
@@ -239,7 +241,7 @@ class Trainer(object):
                     p._grad.data /= stat['task%i_num_steps' % (self.env.env.cur_idx)]
             self.optimizer.step()
         self.env.change_env()
-        return stat
+        return stat, episode_rewards
 
     def state_dict(self):
         return self.optimizer.state_dict()

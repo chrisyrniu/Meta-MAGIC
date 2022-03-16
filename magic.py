@@ -40,26 +40,20 @@ class MAGIC(nn.Module):
         else:
             self.obs_encoder = nn.Sequential(
                 nn.Linear(obs_dim, self.obs_embd_dim),
-                nn.ReLU(),
-                nn.Linear(self.obs_embd_dim, self.obs_embd_dim)
-            )
+                nn.ReLU())
             self.act_encoder = nn.Sequential(
                 nn.Linear(self.act_num, self.act_embd_dim),
-                nn.ReLU(),
-                nn.Linear(self.act_embd_dim, self.act_embd_dim)
-            )
+                nn.ReLU())
             self.rwd_encoder = nn.Sequential(
                 nn.Linear(1, self.rwd_embd_dim),
-                nn.ReLU(),
-                nn.Linear(self.rwd_embd_dim, self.rwd_embd_dim)
-            )
+                nn.ReLU())
             self.done_encoder = nn.Sequential(
                 nn.Linear(2, self.done_embd_dim),
-                nn.ReLU(),
-                nn.Linear(self.done_embd_dim, self.done_embd_dim)
-            )
+                nn.ReLU())
             self.encoder = nn.Sequential(
                 nn.Linear(self.obs_embd_dim + self.act_embd_dim + self.rwd_embd_dim + self.done_embd_dim, self.hid_size),
+                nn.ReLU(),
+                nn.Linear(self.hid_size, self.hid_size),
                 nn.ReLU(),
                 nn.Linear(self.hid_size, self.hid_size))
 
