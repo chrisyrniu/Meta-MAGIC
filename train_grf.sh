@@ -1,17 +1,16 @@
-#!/bin/bash
 export OMP_NUM_THREADS=1
 
 python -u main.py \
-  --training_mode meta-train \
+  --run_mode train \
   --env_name grf \
-  --scenarios 3_vs_2_with_keeper \
-  --num_controlled_agents 3 \
+  --scenarios 2_vs_1_with_keeper 3_vs_2_with_keeper \
+  --num_controlled_agents 2 3 \
   --max_num_lplayers 5 \
   --max_num_rplayers 4 \
   --reward_type scoring \
   --nprocesses 16 \
   --num_epochs 500 \
-  --epoch_size 5 \
+  --epoch_size 10 \
   --batch_size 1000 \
   --hid_size 128 \
   --detach_gap 10 \
@@ -35,8 +34,9 @@ python -u main.py \
   --message_decoder \
   --recurrent \
   --save \
-  --seed 5678 \
+  --save_epochs 200 \
+  --seed 2 \
   --plot \
-  --plot_env multi_task_vanilla_magic_grf_33_max_44_seed_5678 \
+  --plot_env meta_magic_grf_22_33_max_44_seed_2 \
   --plot_port 8097 \
   | tee train_grf.log

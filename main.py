@@ -92,7 +92,6 @@ parser.add_argument('--comm_init', default='uniform', type=str,
                     help='how to initialise comm weights [uniform|zeros]')
 parser.add_argument('--advantages_per_action', default=False, action='store_true',
                     help='Whether to multipy log porb for each chosen action with advantages')
-
 # optimization
 parser.add_argument('--gamma', type=float, default=1.0,
                     help='discount factor')
