@@ -26,7 +26,7 @@ class MultiProcessWorker(mp.Process):
             if task == 'quit':
                 return
             elif task == 'run_batch':
-                batch, stat = self.trainer.run_batch(epoch)
+                batch, stat, _ = self.trainer.run_batch(epoch)
                 self.trainer.optimizer.zero_grad()
                 s = self.trainer.compute_grad(batch)
                 merge_stat(s, stat)
@@ -79,7 +79,7 @@ class MultiProcessTrainer(object):
             comm.send(['run_batch', epoch])
 
         # run its own trainer
-        batch, stat = self.trainer.run_batch(epoch)
+        batch, stat, _ = self.trainer.run_batch(epoch)
         self.trainer.optimizer.zero_grad()
         s = self.trainer.compute_grad(batch)
         merge_stat(s, stat)
