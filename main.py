@@ -232,9 +232,11 @@ def run(num_epochs):
         for n in range(args.epoch_size):
             if n == args.epoch_size - 1 and args.display:
                 trainer.display = True
-            s, episode_rewards = trainer.train_batch(ep)
             if args.run_mode == 'test':
+                s, episode_rewards = trainer.train_batch(ep)
                 episode_reward_info.append(episode_rewards)
+            else:
+                s = trainer.train_batch(ep)
             merge_stat(s, stat)
             trainer.display = False
 
