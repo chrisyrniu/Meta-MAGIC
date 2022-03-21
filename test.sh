@@ -1,17 +1,17 @@
-#!/bin/bash
 export OMP_NUM_THREADS=1
 
 python -u main.py \
   --run_mode test \
   --env_name grf \
-  --scenarios academy_3_vs_1_with_keeper 3_vs_2_with_keeper \
-  --num_controlled_agents 3 3 \
+  --scenarios 4_vs_2_with_keeper \
+  --num_controlled_agents 4 \
   --max_num_lplayers 5 \
   --max_num_rplayers 4 \
   --reward_type scoring \
   --nprocesses 16 \
-  --num_epochs 500 \
-  --epoch_size 15 \
+  --num_epochs 10 \
+  --test_episode_num 10 \
+  --epoch_size 10 \
   --batch_size 1000 \
   --hid_size 128 \
   --detach_gap 10 \
@@ -34,8 +34,6 @@ python -u main.py \
   --message_encoder \
   --message_decoder \
   --recurrent \
+  --seed 5 \
   --load model.pt \
-  --seed 0 \
-  | tee test_grf.log
-  
-# Should revise according to the tested trained model
+  | tee test.log
