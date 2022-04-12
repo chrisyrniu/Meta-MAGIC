@@ -44,17 +44,21 @@ class Trainer(object):
 
         for t in range(self.args.max_steps):
             misc = dict()
+
+            if t == 0 and self.args.hard_attn and self.args.tarcomm:
+                info['comm_action'] = np.zeros(nagents, dtype=int)
+
             # recurrence over time
             if  meta_reset and t == 0:
                 prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0], nagents=nagents)
 
-            if self.args.vanilla:
+            if self.args.vanilla or self.args.tarcomm:
                 x = [state, prev_hid]
             else:
                 x = [state, prev_action, prev_reward, prev_hid]
             action_out, value, prev_hid = self.policy_net(x, info)
 
-            if self.args.vanilla:
+            if self.args.vanilla or self.args.tarcomm:
                 if (t + 1) % self.args.detach_gap == 0:
                     prev_hid = (prev_hid[0].detach(), prev_hid[1].detach())
 
@@ -63,6 +67,10 @@ class Trainer(object):
             next_state, reward, done, info = self.env.step(actual)
             prev_action = action[0]
             prev_reward = reward
+
+            if self.args.hard_attn and self.args.tarcomm:
+                info['comm_action'] = action[-1]
+                stat['task%i_comm_action' % (self.env.env.cur_idx)] = stat.get('comm_action', 0) + info['comm_action']
 
             if 'alive_mask' in info:
                 misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
@@ -206,7 +214,7 @@ class Trainer(object):
         episode_rewards = []
         while (len(batch) < self.args.batch_size and self.args.run_mode != "test") or (len(episode_rewards) < self.args.test_episode_num and self.args.run_mode == "test"):
             count += 1
-            if self.args.vanilla:
+            if self.args.vanilla or self.args.tarcomm:
                 meta_reset = True
             else:
                 if count == 1:

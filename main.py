@@ -10,6 +10,7 @@ import torch
 import visdom
 import data
 from magic import MAGIC
+from tar_comm import TarCommNetMLP
 from utils import *
 from action_utils import parse_action_args
 from trainer import Trainer
@@ -30,6 +31,8 @@ parser.add_argument('--run_mode', default='train', type=str,
                     help='mode of running (train|test|fine-tune)')
 parser.add_argument('--vanilla', action='store_true', default=False,
                     help='if use vanilla magic')
+parser.add_argument('--tarcomm', action='store_true', default=False,
+                    help='if use tar-comm')
 parser.add_argument('--save_epochs', default=100, type=int,
                     help='the epochs to start saving models')
 parser.add_argument('--num_epochs', default=100, type=int,
@@ -94,6 +97,17 @@ parser.add_argument('--comm_init', default='uniform', type=str,
                     help='how to initialise comm weights [uniform|zeros]')
 parser.add_argument('--advantages_per_action', default=False, action='store_true',
                     help='Whether to multipy log porb for each chosen action with advantages')
+parser.add_argument('--comm_passes', type=int, default=1,
+                    help="Number of comm passes per step over the baseline models")
+parser.add_argument('--comm_mask_zero', action='store_true', default=False,
+                    help="whether block the communication")
+parser.add_argument('--share_weights', default=False, action='store_true',
+                    help='Share weights for hops of baselines')
+parser.add_argument('--rnn_type', default='LSTM', type=str,
+                    help='type of rnn to use for baselines. [LSTM|MLP]')
+parser.add_argument('--hard_attn', default=False, action='store_true',
+                    help='whether to enable comm actiosn for baselines')          
+
 # optimization
 parser.add_argument('--gamma', type=float, default=1.0,
                     help='discount factor')
@@ -154,6 +168,11 @@ if not isinstance(args.num_actions, (list, tuple)): # single action case
 args.dim_actions = env.dim_actions
 args.num_inputs = num_inputs
 
+if args.hard_attn and args.tarcomm:
+    # add comm_action as last dim in actions
+    args.num_actions = [*args.num_actions, 2]
+    args.dim_actions = env.dim_actions + 1
+
 parse_action_args(args)
 
 if args.seed == -1:
@@ -164,7 +183,10 @@ random.seed(args.seed)
 
 print(args)
 
-policy_net = MAGIC(args, num_inputs)
+if args.tarcomm:
+    policy_net = TarCommNetMLP(args, num_inputs)
+else:
+    policy_net = MAGIC(args, num_inputs)
 
 
 if not args.display:
@@ -198,6 +220,8 @@ for i in range(len(args.num_controlled_agents)):
     log['task%i_reward' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
     log['task%i_success' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
     log['task%i_steps_taken' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
+    if args.tarcomm:
+        log['task%i_comm_action' % i] = LogField(list(), True, 'epoch', 'task%i_num_episodes' % i)
     highest_rewards.append(-1000000)
 
 
@@ -266,6 +290,8 @@ def run(num_epochs):
             print('Task {} Reward: {}'.format(i, stat['task%i_reward' % i]))
             print('Task {} Success: {}'.format(i, stat['task%i_success' % i]))
             print('Task {} Steps-Taken: {}'.format(i, stat['task%i_steps_taken' % i]))
+            if args.tarcomm:
+                print('Task {} Comm-Action: {}'.format(i, stat['task%i_comm_action' % i]))
 
         if args.plot:
             for k, v in log.items():
