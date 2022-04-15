@@ -221,7 +221,7 @@ class TarCommNetMLP(nn.Module):
             # scores = scores.masked_fill(comm_action_mask.squeeze(-1) == 0, -1e9)
             # Use agent_mask instead of comm_action_mask to make this work in tj env
             scores = scores.masked_fill(agent_mask.squeeze(-1) == 0, -1e9)
-
+            
             # softmax + weighted sum
             attn = F.softmax(scores, dim=-1)
             # if the scores are all -1e9 for all agents, the attns should be all 0 (fixed from the original version)
