@@ -253,12 +253,16 @@ def run(num_epochs):
         epoch_begin_time = time.time()
         stat = dict()
         episode_reward_info = []
+        episode_step_info = []
         for n in range(args.epoch_size):
             if n == args.epoch_size - 1 and args.display:
                 trainer.display = True
             if args.run_mode == 'test':
-                s, episode_rewards = trainer.train_batch(ep)
+                s, episode_rewards, episode_steps = trainer.train_batch(ep)
                 episode_reward_info.append(episode_rewards)
+                episode_step_info.append(episode_steps)
+            elif args.nprocesses == 1:
+                s, _, _ = trainer.train_batch(ep)
             else:
                 s = trainer.train_batch(ep)
             merge_stat(s, stat)
@@ -279,7 +283,9 @@ def run(num_epochs):
         
         if args.run_mode == 'test':
             episode_reward_info = np.mean(np.array(episode_reward_info), axis=0)
+            episode_step_info = np.mean(np.array(episode_step_info), axis=0)
             print('Average episode reward', episode_reward_info)
+            print('Average episode step', episode_step_info)
 
         print('Epoch {}'.format(epoch))
         # print('Episode: {}'.format(num_episodes))
